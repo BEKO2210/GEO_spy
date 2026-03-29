@@ -127,18 +127,37 @@
     }
   }
 
-  // --- Load Weather ---
+  // --- Load Weather (erweitert) ---
   async function loadWeather(lat, lon) {
     try {
       const data = await GeoAPI.getWeather(lat, lon);
       setValue('val-temp', `${data.temp}${data.tempUnit}`);
+      setValue('val-feels-like', data.feelsLike != null ? `${data.feelsLike}${data.tempUnit}` : '–');
       setValue('val-wind', `${data.windSpeed} ${data.windUnit}`);
+      setValue('val-wind-dir', data.windDir != null ? `${data.windDir}° (${windDirText(data.windDir)})` : '–');
       setValue('val-weather-desc', data.description);
       setValue('val-humidity', `${data.humidity}%`);
+      setValue('val-precip', data.precipitation != null ? `${data.precipitation} mm` : '0 mm');
+      setValue('val-pressure', data.pressure != null ? `${data.pressure} hPa` : '–');
+      setValue('val-clouds', data.cloudCover != null ? `${data.cloudCover}%` : '–');
+      setValue('val-uv', data.uvIndex != null ? `${data.uvIndex} (${uvLabel(data.uvIndex)})` : '–');
       setCardStatus('card-weather', 'ok', 'OK');
     } catch {
       setCardStatus('card-weather', 'error', 'Fehler');
     }
+  }
+
+  function windDirText(deg) {
+    const dirs = ['N', 'NNO', 'NO', 'ONO', 'O', 'OSO', 'SO', 'SSO', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    return dirs[Math.round(deg / 22.5) % 16];
+  }
+
+  function uvLabel(uv) {
+    if (uv <= 2) return 'Niedrig';
+    if (uv <= 5) return 'Mäßig';
+    if (uv <= 7) return 'Hoch';
+    if (uv <= 10) return 'Sehr hoch';
+    return 'Extrem';
   }
 
   // --- Load Sun Times ---
@@ -286,6 +305,109 @@
       }
     } catch {
       setCardStatus('card-astros', 'error', 'Fehler');
+    }
+  }
+
+  // --- Load Nearby POIs (Overpass/OSM) ---
+  async function loadNearbyPOIs(lat, lon) {
+    try {
+      const pois = await GeoAPI.getNearbyPOIs(lat, lon, 500);
+      const list = $('#poi-list');
+      list.innerHTML = '';
+      if (pois.length === 0) {
+        list.innerHTML = '<li class="quake-item"><div class="quake-details"><div class="quake-place">Keine POIs in 500m gefunden</div></div></li>';
+      }
+      const poiIcons = { restaurant: 'Rest', cafe: 'Cafe', hospital: 'Hosp', pharmacy: 'Apot', bank: 'Bank', fuel: 'Tank', police: 'Poli', fire_station: 'Feuw' };
+      pois.slice(0, 10).forEach(p => {
+        const li = document.createElement('li');
+        li.className = 'quake-item';
+        li.innerHTML = `
+          <span class="quake-mag quake-mag--low" style="font-size:.55rem">${poiIcons[p.type] || p.type.slice(0, 4)}</span>
+          <div class="quake-details">
+            <div class="quake-place">${p.name}</div>
+            <div class="quake-time">${p.type} · ${p.distance} m</div>
+          </div>`;
+        list.appendChild(li);
+      });
+      setCardStatus('card-pois', 'ok', `${pois.length} gefunden`);
+    } catch {
+      setCardStatus('card-pois', 'error', 'Fehler');
+    }
+  }
+
+  // --- Load Weather Alerts (NWS) ---
+  async function loadWeatherAlerts(lat, lon) {
+    try {
+      const data = await GeoAPI.getWeatherAlerts(lat, lon);
+      if (data.notUS) {
+        setValue('val-alert-count', 'Nur US-Daten');
+        setCardStatus('card-alerts', 'ok', 'N/A (kein US)');
+        return;
+      }
+      setValue('val-alert-count', data.count || 'Keine');
+      const list = $('#alert-list');
+      list.innerHTML = '';
+      data.alerts.forEach(a => {
+        const li = document.createElement('li');
+        li.className = 'quake-item';
+        const sevClass = a.severity === 'Extreme' || a.severity === 'Severe' ? 'high' : a.severity === 'Moderate' ? 'mid' : 'low';
+        li.innerHTML = `
+          <span class="quake-mag quake-mag--${sevClass}" style="font-size:.5rem">${(a.severity || '').slice(0, 4)}</span>
+          <div class="quake-details">
+            <div class="quake-place">${a.event}</div>
+            <div class="quake-time">${a.headline?.slice(0, 80) || ''}</div>
+          </div>`;
+        list.appendChild(li);
+      });
+      setCardStatus('card-alerts', data.count > 0 ? 'live' : 'ok', data.count > 0 ? `${data.count} aktiv` : 'Keine');
+    } catch {
+      setCardStatus('card-alerts', 'error', 'Fehler');
+    }
+  }
+
+  // --- Load Tides (NOAA) ---
+  async function loadTideData(lat, lon) {
+    try {
+      const data = await GeoAPI.getTideData(lat, lon);
+      if (data.available) {
+        setValue('val-high-tide', `${data.highTide.height.toFixed(2)} m (${data.highTide.time})`);
+        setValue('val-low-tide', `${data.lowTide.height.toFixed(2)} m (${data.lowTide.time})`);
+        setCardStatus('card-tides', 'ok', 'OK');
+      } else {
+        setValue('val-high-tide', 'Keine Station');
+        setValue('val-low-tide', '–');
+        setCardStatus('card-tides', 'ok', 'N/A');
+      }
+    } catch {
+      setCardStatus('card-tides', 'error', 'Fehler');
+    }
+  }
+
+  // --- Load Weather History ---
+  async function loadWeatherHistory(lat, lon) {
+    try {
+      const data = await GeoAPI.getWeatherHistory(lat, lon);
+      const list = $('#history-list');
+      list.innerHTML = '';
+      data.dates.forEach((date, i) => {
+        const li = document.createElement('li');
+        li.className = 'quake-item';
+        const d = new Date(date);
+        const dayName = d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
+        const tMax = data.tempMax[i];
+        const tMin = data.tempMin[i];
+        const rain = data.precipitation[i];
+        li.innerHTML = `
+          <span class="quake-mag quake-mag--low" style="font-size:.55rem;width:2.5rem;height:2.5rem">${tMax != null ? Math.round(tMax) + '°' : '–'}</span>
+          <div class="quake-details">
+            <div class="quake-place">${dayName}: ${tMin != null ? Math.round(tMin) : '–'}° – ${tMax != null ? Math.round(tMax) : '–'}°</div>
+            <div class="quake-time">Regen: ${rain != null ? rain.toFixed(1) : '0'} mm · Wind: ${data.windMax[i] != null ? Math.round(data.windMax[i]) : '–'} km/h</div>
+          </div>`;
+        list.appendChild(li);
+      });
+      setCardStatus('card-history', 'ok', '7 Tage');
+    } catch {
+      setCardStatus('card-history', 'error', 'Fehler');
     }
   }
 
@@ -472,6 +594,72 @@
     });
   }
 
+  // --- City Search (Open-Meteo Geocoding) ---
+  function setupCitySearch() {
+    const input = $('#search-input');
+    const results = $('#search-results');
+    if (!input || !results) return;
+
+    let debounceTimer = null;
+
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      const q = input.value.trim();
+      if (q.length < 2) { results.hidden = true; return; }
+
+      debounceTimer = setTimeout(async () => {
+        try {
+          const cities = await GeoAPI.searchCity(q);
+          results.innerHTML = '';
+          if (cities.length === 0) {
+            results.innerHTML = '<li class="search-item">Keine Ergebnisse</li>';
+          } else {
+            cities.forEach(c => {
+              const li = document.createElement('li');
+              li.className = 'search-item';
+              li.textContent = `${c.name}, ${c.admin1 ? c.admin1 + ', ' : ''}${c.country}`;
+              li.addEventListener('click', () => {
+                input.value = li.textContent;
+                results.hidden = true;
+                GeoMap.setUserLocation(c.lat, c.lon, li.textContent);
+                currentLocation = { lat: c.lat, lon: c.lon, countryCode: c.countryCode, timezone: c.timezone };
+                // Reload all data for new location
+                reloadAllData(c.lat, c.lon, c.countryCode, c.timezone);
+                toast(`Standort: ${c.name}`, 'success');
+              });
+              results.appendChild(li);
+            });
+          }
+          results.hidden = false;
+        } catch { results.hidden = true; }
+      }, 350);
+    });
+
+    // Close results on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.search-bar')) results.hidden = true;
+    });
+  }
+
+  // --- Reload all data for a given location ---
+  async function reloadAllData(lat, lon, countryCode, timezone) {
+    await Promise.allSettled([
+      loadGeocode(lat, lon),
+      loadElevation(lat, lon),
+      loadWeather(lat, lon),
+      loadSunTimes(lat, lon),
+      loadTimezone(lat, lon, timezone),
+      loadCountryInfo(countryCode),
+      loadAirQuality(lat, lon),
+      loadMarineData(lat, lon),
+      loadFloodData(lat, lon),
+      loadNearbyPOIs(lat, lon),
+      loadWeatherAlerts(lat, lon),
+      loadTideData(lat, lon),
+      loadWeatherHistory(lat, lon)
+    ]);
+  }
+
   // --- Utility ---
   function getTimeAgo(timestamp) {
     const diff = Date.now() - timestamp;
@@ -500,6 +688,7 @@
     GeoMap.init();
     setupMapClick();
     setupMapControls();
+    setupCitySearch();
 
     // Load IP location first (needed for other API calls)
     const ipData = await loadIPLocation();
@@ -520,7 +709,11 @@
         loadNaturalEvents(),
         loadMarineData(lat, lon),
         loadFloodData(lat, lon),
-        loadPeopleInSpace()
+        loadPeopleInSpace(),
+        loadNearbyPOIs(lat, lon),
+        loadWeatherAlerts(lat, lon),
+        loadTideData(lat, lon),
+        loadWeatherHistory(lat, lon)
       ]);
     } else {
       // Still try to load non-location-dependent data
@@ -544,13 +737,7 @@
           toast('GPS-Standort aktualisiert', 'success');
 
           // Reload with better coordinates
-          await Promise.allSettled([
-            loadGeocode(lat, lon),
-            loadElevation(lat, lon),
-            loadWeather(lat, lon),
-            loadSunTimes(lat, lon),
-            loadAirQuality(lat, lon)
-          ]);
+          await reloadAllData(lat, lon, currentLocation?.countryCode, currentLocation?.timezone);
         },
         () => { /* User denied geolocation, IP location is fine */ },
         { enableHighAccuracy: true, timeout: 10000 }

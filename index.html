@@ -45,6 +45,11 @@
   <main class="main">
     <!-- Map Panel -->
     <section class="panel panel--map active" id="panel-map" role="tabpanel" aria-label="Kartenansicht">
+      <!-- City Search Bar -->
+      <div class="search-bar" id="search-bar">
+        <input type="search" id="search-input" class="search-input" placeholder="Stadt suchen..." autocomplete="off" aria-label="Stadt suchen">
+        <ul class="search-results" id="search-results" hidden></ul>
+      </div>
       <div id="map" class="map"></div>
       <div class="map-controls">
         <button class="map-ctrl-btn" id="btn-locate" aria-label="Meinen Standort finden">
@@ -126,7 +131,7 @@
           </div>
         </article>
 
-        <!-- Weather Card -->
+        <!-- Weather Card (erweitert) -->
         <article class="card" id="card-weather">
           <div class="card__header">
             <h2 class="card__title">Wetter</h2>
@@ -134,9 +139,15 @@
           </div>
           <div class="card__body">
             <div class="data-row"><span class="data-label">Temperatur</span><span class="data-value" id="val-temp">–</span></div>
-            <div class="data-row"><span class="data-label">Wind</span><span class="data-value" id="val-wind">–</span></div>
+            <div class="data-row"><span class="data-label">Gefühlt</span><span class="data-value" id="val-feels-like">–</span></div>
             <div class="data-row"><span class="data-label">Zustand</span><span class="data-value" id="val-weather-desc">–</span></div>
+            <div class="data-row"><span class="data-label">Wind</span><span class="data-value" id="val-wind">–</span></div>
+            <div class="data-row"><span class="data-label">Windrichtung</span><span class="data-value" id="val-wind-dir">–</span></div>
             <div class="data-row"><span class="data-label">Luftfeuchtigkeit</span><span class="data-value" id="val-humidity">–</span></div>
+            <div class="data-row"><span class="data-label">Niederschlag</span><span class="data-value" id="val-precip">–</span></div>
+            <div class="data-row"><span class="data-label">Luftdruck</span><span class="data-value" id="val-pressure">–</span></div>
+            <div class="data-row"><span class="data-label">Bewölkung</span><span class="data-value" id="val-clouds">–</span></div>
+            <div class="data-row"><span class="data-label">UV-Index</span><span class="data-value" id="val-uv">–</span></div>
           </div>
         </article>
 
@@ -179,6 +190,17 @@
             <div class="data-row"><span class="data-label">ASN</span><span class="data-value" id="val-asn">–</span></div>
             <div class="data-row"><span class="data-label">Organisation</span><span class="data-value" id="val-org">–</span></div>
             <div class="data-row"><span class="data-label">Typ</span><span class="data-value" id="val-connection-type">–</span></div>
+          </div>
+        </article>
+
+        <!-- Nearby POIs Card -->
+        <article class="card" id="card-pois">
+          <div class="card__header">
+            <h2 class="card__title">In der Nähe (500m)</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <ul class="quake-list" id="poi-list" aria-label="Nahegelegene Orte"></ul>
           </div>
         </article>
 
@@ -266,6 +288,41 @@
           <div class="card__body">
             <div class="data-row"><span class="data-label">Abfluss aktuell</span><span class="data-value" id="val-flood-current">–</span></div>
             <div class="data-row"><span class="data-label">Max. 7 Tage</span><span class="data-value" id="val-flood-max">–</span></div>
+          </div>
+        </article>
+
+        <!-- Weather Alerts Card -->
+        <article class="card card--wide" id="card-alerts">
+          <div class="card__header">
+            <h2 class="card__title">Wetterwarnungen</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Aktive Warnungen</span><span class="data-value" id="val-alert-count">–</span></div>
+            <ul class="quake-list" id="alert-list" aria-label="Wetterwarnungen"></ul>
+          </div>
+        </article>
+
+        <!-- Tides Card -->
+        <article class="card" id="card-tides">
+          <div class="card__header">
+            <h2 class="card__title">Gezeiten (NOAA)</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Hochwasser</span><span class="data-value" id="val-high-tide">–</span></div>
+            <div class="data-row"><span class="data-label">Niedrigwasser</span><span class="data-value" id="val-low-tide">–</span></div>
+          </div>
+        </article>
+
+        <!-- Weather History Card -->
+        <article class="card card--wide" id="card-history">
+          <div class="card__header">
+            <h2 class="card__title">Wetter letzte 7 Tage</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body" id="history-body">
+            <ul class="quake-list" id="history-list" aria-label="Wetterverlauf"></ul>
           </div>
         </article>
 

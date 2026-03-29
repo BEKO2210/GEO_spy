@@ -185,6 +185,48 @@ img{max-width:100%;height:auto;display:block}
 }
 .map-info-card__close:hover{background:var(--bg-hover)}
 
+/* --- Search Bar --- */
+.search-bar{
+  position:absolute;
+  top:.75rem;
+  left:.75rem;
+  right:4.5rem;
+  z-index:800;
+}
+.search-input{
+  width:100%;
+  padding:.6rem 1rem;
+  font:inherit;
+  font-size:.85rem;
+  color:var(--text);
+  background:var(--bg-card);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--radius);
+  outline:none;
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+}
+.search-input:focus{border-color:var(--accent)}
+.search-input::placeholder{color:var(--text-dim)}
+.search-results{
+  margin-top:.25rem;
+  background:var(--bg-card);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--radius);
+  box-shadow:0 4px 16px rgba(0,0,0,.5);
+  max-height:200px;
+  overflow-y:auto;
+}
+.search-results[hidden]{display:none}
+.search-item{
+  padding:.55rem 1rem;
+  font-size:.8rem;
+  cursor:pointer;
+  border-bottom:1px solid rgba(255,255,255,.04);
+  transition:background .15s;
+}
+.search-item:hover{background:var(--bg-hover)}
+.search-item:last-child{border-bottom:none}
+
 /* --- Cards Grid --- */
 .cards-grid{
   display:grid;

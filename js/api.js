@@ -105,6 +105,25 @@ const GeoAPI = (() => {
       };
     } catch { /* fallback */ }
 
+    // Fallback: FreeIPAPI (includes VPN detection)
+    try {
+      const data = await fetchJSON('https://freeipapi.com/api/json/', 'FreeIPAPI');
+      return {
+        ip: data.ipAddress,
+        lat: data.latitude,
+        lon: data.longitude,
+        city: data.cityName,
+        region: data.regionName,
+        country: data.countryName,
+        countryCode: data.countryCode,
+        isp: '',
+        asn: '',
+        timezone: data.timeZone || '',
+        isVPN: data.isProxy,
+        source: 'FreeIPAPI'
+      };
+    } catch { /* fallback */ }
+
     // Fallback: geoplugin.net
     const data = await fetchJSON('http://www.geoplugin.net/json.gp', 'geoplugin.net');
     return {
@@ -122,19 +141,41 @@ const GeoAPI = (() => {
     };
   }
 
-  // --- Reverse Geocoding (Nominatim) ---
+  // --- Country by IP (country.is – ultraschnell) ---
+
+  async function getCountryByIP() {
+    const data = await fetchJSON('https://api.country.is/', 'country.is');
+    return { ip: data.ip, countryCode: data.country };
+  }
+
+  // --- Reverse Geocoding (Nominatim + BigDataCloud fallback) ---
 
   async function reverseGeocode(lat, lon) {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=de`;
-    const data = await fetchJSON(url, 'Nominatim', { ttl: 300_000 });
-    const a = data.address || {};
+    // Primary: Nominatim
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1&accept-language=de`;
+      const data = await fetchJSON(url, 'Nominatim', { ttl: 300_000 });
+      const a = data.address || {};
+      return {
+        street: [a.road, a.house_number].filter(Boolean).join(' ') || a.pedestrian || '',
+        zip: a.postcode || '',
+        place: a.city || a.town || a.village || a.municipality || '',
+        state: a.state || '',
+        country: a.country || '',
+        display: data.display_name || ''
+      };
+    } catch { /* fallback */ }
+
+    // Fallback: BigDataCloud (unlimited, client-side, no key)
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=de`;
+    const data = await fetchJSON(url, 'BigDataCloud', { ttl: 300_000 });
     return {
-      street: [a.road, a.house_number].filter(Boolean).join(' ') || a.pedestrian || '',
-      zip: a.postcode || '',
-      place: a.city || a.town || a.village || a.municipality || '',
-      state: a.state || '',
-      country: a.country || '',
-      display: data.display_name || ''
+      street: data.locality || '',
+      zip: data.postcode || '',
+      place: data.city || data.locality || '',
+      state: data.principalSubdivision || '',
+      country: data.countryName || '',
+      display: [data.locality, data.city, data.principalSubdivision, data.countryName].filter(Boolean).join(', ')
     };
   }
 
@@ -146,6 +187,15 @@ const GeoAPI = (() => {
       const data = await fetchJSON(url, 'OpenTopoData', { ttl: 600_000 });
       if (data.results && data.results[0]) {
         return { elevation: data.results[0].elevation };
+      }
+    } catch { /* fallback */ }
+
+    // Fallback: Open-Meteo Elevation (Copernicus DEM 90m)
+    try {
+      const url = `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`;
+      const data = await fetchJSON(url, 'Open-Meteo Elev', { ttl: 600_000 });
+      if (data.elevation && data.elevation[0] != null) {
+        return { elevation: data.elevation[0] };
       }
     } catch { /* fallback */ }
 
@@ -176,15 +226,21 @@ const GeoAPI = (() => {
   // --- Weather (Open-Meteo – free, no key) ---
 
   async function getWeather(lat, lon) {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,apparent_temperature,precipitation,surface_pressure,cloud_cover,wind_direction_10m,uv_index&timezone=auto`;
     const data = await fetchJSON(url, 'Open-Meteo');
     const c = data.current;
     return {
       temp: c.temperature_2m,
       tempUnit: data.current_units?.temperature_2m || '°C',
+      feelsLike: c.apparent_temperature,
       humidity: c.relative_humidity_2m,
       windSpeed: c.wind_speed_10m,
+      windDir: c.wind_direction_10m,
       windUnit: data.current_units?.wind_speed_10m || 'km/h',
+      precipitation: c.precipitation,
+      pressure: c.surface_pressure,
+      cloudCover: c.cloud_cover,
+      uvIndex: c.uv_index,
       weatherCode: c.weather_code,
       description: weatherCodeToText(c.weather_code)
     };
@@ -226,9 +282,25 @@ const GeoAPI = (() => {
     throw new Error('Sunrise API error');
   }
 
-  // --- Timezone (WorldTimeAPI) ---
+  // --- Timezone (TimeAPI.io + WorldTimeAPI fallback) ---
 
   async function getTimezone(lat, lon, tzName) {
+    // Primary: TimeAPI.io (by coordinates – most accurate)
+    try {
+      const url = `https://timeapi.io/api/timezone/coordinate?latitude=${lat}&longitude=${lon}`;
+      const data = await fetchJSON(url, 'TimeAPI.io');
+      return {
+        timezone: data.timeZone,
+        datetime: data.currentLocalTime,
+        utcOffset: data.currentUtcOffset?.standardUtcOffset?.seconds != null
+          ? formatUtcOffset(data.currentUtcOffset.standardUtcOffset.seconds)
+          : '',
+        localTime: new Date(data.currentLocalTime).toLocaleTimeString('de-DE'),
+        hasDST: data.hasDayLightSaving
+      };
+    } catch { /* fallback */ }
+
+    // Fallback: WorldTimeAPI
     if (tzName) {
       try {
         const url = `https://worldtimeapi.org/api/timezone/${tzName}`;
@@ -237,18 +309,29 @@ const GeoAPI = (() => {
           timezone: data.timezone,
           datetime: data.datetime,
           utcOffset: data.utc_offset,
-          localTime: new Date(data.datetime).toLocaleTimeString('de-DE')
+          localTime: new Date(data.datetime).toLocaleTimeString('de-DE'),
+          hasDST: data.dst
         };
       } catch { /* fallback */ }
     }
-    // Fallback: use browser timezone
+
+    // Last resort: browser timezone
     const now = new Date();
     return {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       datetime: now.toISOString(),
       utcOffset: `${now.getTimezoneOffset() > 0 ? '-' : '+'}${String(Math.abs(Math.floor(now.getTimezoneOffset() / 60))).padStart(2, '0')}:${String(Math.abs(now.getTimezoneOffset() % 60)).padStart(2, '0')}`,
-      localTime: now.toLocaleTimeString('de-DE')
+      localTime: now.toLocaleTimeString('de-DE'),
+      hasDST: null
     };
+  }
+
+  function formatUtcOffset(seconds) {
+    const sign = seconds >= 0 ? '+' : '-';
+    const abs = Math.abs(seconds);
+    const h = String(Math.floor(abs / 3600)).padStart(2, '0');
+    const m = String(Math.floor((abs % 3600) / 60)).padStart(2, '0');
+    return `${sign}${h}:${m}`;
   }
 
   // --- Country Info (restcountries.com) ---
@@ -394,9 +477,125 @@ const GeoAPI = (() => {
     return { count: null, people: [] };
   }
 
+  // --- Nearby POIs via Overpass/OSM (free, no key) ---
+
+  async function getNearbyPOIs(lat, lon, radius = 500) {
+    const query = `[out:json][timeout:10];(
+      node["amenity"~"restaurant|cafe|hospital|pharmacy|bank|fuel|police|fire_station"](around:${radius},${lat},${lon});
+    );out body 20;`;
+    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+    const data = await fetchJSON(url, 'Overpass/OSM', { ttl: 300_000, timeout: 12000 });
+    return (data.elements || []).map(el => ({
+      name: el.tags?.name || el.tags?.amenity || 'Unbenannt',
+      type: el.tags?.amenity || '',
+      lat: el.lat,
+      lon: el.lon,
+      distance: haversine(lat, lon, el.lat, el.lon)
+    })).sort((a, b) => a.distance - b.distance);
+  }
+
+  function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const toRad = d => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+  }
+
+  // --- NWS Weather Alerts (US only, free, no key) ---
+
+  async function getWeatherAlerts(lat, lon) {
+    try {
+      const url = `https://api.weather.gov/alerts/active?point=${lat},${lon}&limit=5`;
+      const data = await fetchJSON(url, 'NWS Alerts', { timeout: 6000 });
+      return {
+        count: data.features?.length || 0,
+        alerts: (data.features || []).map(f => ({
+          event: f.properties.event,
+          headline: f.properties.headline,
+          severity: f.properties.severity,
+          urgency: f.properties.urgency,
+          description: f.properties.description?.slice(0, 200),
+          expires: f.properties.expires
+        }))
+      };
+    } catch {
+      return { count: 0, alerts: [], notUS: true };
+    }
+  }
+
+  // --- Open-Meteo Geocoding (city search, free) ---
+
+  async function searchCity(name) {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=5&language=de`;
+    const data = await fetchJSON(url, 'Open-Meteo Geo', { ttl: 600_000 });
+    return (data.results || []).map(r => ({
+      name: r.name,
+      country: r.country,
+      countryCode: r.country_code,
+      lat: r.latitude,
+      lon: r.longitude,
+      population: r.population,
+      elevation: r.elevation,
+      timezone: r.timezone,
+      admin1: r.admin1 || ''
+    }));
+  }
+
+  // --- NOAA Tides (US coastal stations, free) ---
+
+  async function getTideData(lat, lon) {
+    // Find nearest station – use a known major station based on rough proximity
+    // NOAA has fixed station IDs; we try the point forecast
+    try {
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const url = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=today&product=predictions&datum=MLLW&time_zone=lst_ldt&units=metric&format=json&station=9414290`;
+      const data = await fetchJSON(url, 'NOAA Tides', { ttl: 600_000 });
+      if (data.predictions && data.predictions.length) {
+        const preds = data.predictions;
+        // Find next high/low
+        let maxV = -Infinity, minV = Infinity, maxT = '', minT = '';
+        preds.forEach(p => {
+          const v = parseFloat(p.v);
+          if (v > maxV) { maxV = v; maxT = p.t; }
+          if (v < minV) { minV = v; minT = p.t; }
+        });
+        return {
+          available: true,
+          highTide: { time: maxT, height: maxV },
+          lowTide: { time: minT, height: minV },
+          predictions: preds.length
+        };
+      }
+    } catch { /* not available */ }
+    return { available: false };
+  }
+
+  // --- Open-Meteo Historical Weather (last 7 days for comparison) ---
+
+  async function getWeatherHistory(lat, lon) {
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(start.getDate() - 7);
+    const startStr = start.toISOString().slice(0, 10);
+    const endStr = end.toISOString().slice(0, 10);
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max&timezone=auto&start_date=${startStr}&end_date=${endStr}`;
+    const data = await fetchJSON(url, 'Open-Meteo History', { ttl: 600_000 });
+    const d = data.daily || {};
+    return {
+      dates: d.time || [],
+      tempMax: d.temperature_2m_max || [],
+      tempMin: d.temperature_2m_min || [],
+      precipitation: d.precipitation_sum || [],
+      windMax: d.wind_speed_10m_max || []
+    };
+  }
+
   // --- Public interface ---
   return {
     getIPLocation,
+    getCountryByIP,
     reverseGeocode,
     getElevation,
     isOnWater,
@@ -411,6 +610,11 @@ const GeoAPI = (() => {
     getMarineData,
     getFloodData,
     getPeopleInSpace,
+    getNearbyPOIs,
+    getWeatherAlerts,
+    searchCity,
+    getTideData,
+    getWeatherHistory,
     getStatus: () => ({ ...apiStatus })
   };
 })();
