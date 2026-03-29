@@ -339,33 +339,60 @@
     }
   }
 
-  // --- Load Weather Alerts (NWS) ---
+  // --- Load Crisis Alerts (NWS US + GDACS Global) ---
   async function loadWeatherAlerts(lat, lon) {
-    try {
-      const data = await GeoAPI.getWeatherAlerts(lat, lon);
-      if (data.notUS) {
-        setValue('val-alert-count', 'Nur US-Daten');
-        setCardStatus('card-alerts', 'ok', 'N/A (kein US)');
-        return;
-      }
-      setValue('val-alert-count', data.count || 'Keine');
-      const list = $('#alert-list');
-      list.innerHTML = '';
-      data.alerts.forEach(a => {
+    const list = $('#alert-list');
+    list.innerHTML = '';
+    let totalCount = 0;
+
+    // Load NWS (US) and GDACS (Global) in parallel
+    const [nwsResult, gdacsResult] = await Promise.allSettled([
+      GeoAPI.getWeatherAlerts(lat, lon),
+      GeoAPI.getGDACSAlerts()
+    ]);
+
+    // NWS Alerts
+    if (nwsResult.status === 'fulfilled' && !nwsResult.value.notUS) {
+      const nws = nwsResult.value;
+      totalCount += nws.count;
+      nws.alerts.forEach(a => {
         const li = document.createElement('li');
         li.className = 'quake-item';
         const sevClass = a.severity === 'Extreme' || a.severity === 'Severe' ? 'high' : a.severity === 'Moderate' ? 'mid' : 'low';
         li.innerHTML = `
-          <span class="quake-mag quake-mag--${sevClass}" style="font-size:.5rem">${(a.severity || '').slice(0, 4)}</span>
+          <span class="quake-mag quake-mag--${sevClass}" style="font-size:.5rem">NWS</span>
           <div class="quake-details">
             <div class="quake-place">${a.event}</div>
             <div class="quake-time">${a.headline?.slice(0, 80) || ''}</div>
           </div>`;
         list.appendChild(li);
       });
-      setCardStatus('card-alerts', data.count > 0 ? 'live' : 'ok', data.count > 0 ? `${data.count} aktiv` : 'Keine');
-    } catch {
-      setCardStatus('card-alerts', 'error', 'Fehler');
+    }
+
+    // GDACS Global Disaster Alerts
+    if (gdacsResult.status === 'fulfilled') {
+      const gdacs = gdacsResult.value;
+      totalCount += gdacs.count;
+      const typeLabels = { EQ: 'Erdb', FL: 'Flut', TC: 'Zykl', VO: 'Vulk', WF: 'Feur', DR: 'Dürr' };
+      gdacs.alerts.forEach(a => {
+        const li = document.createElement('li');
+        li.className = 'quake-item';
+        const sevClass = a.alertLevel === 'Red' ? 'high' : a.alertLevel === 'Orange' ? 'mid' : 'low';
+        li.innerHTML = `
+          <span class="quake-mag quake-mag--${sevClass}" style="font-size:.5rem">${typeLabels[a.type] || a.type}</span>
+          <div class="quake-details">
+            <div class="quake-place">${a.name}</div>
+            <div class="quake-time">${a.country} · ${a.alertLevel} · ${a.date ? new Date(a.date).toLocaleDateString('de-DE') : ''}</div>
+          </div>`;
+        list.appendChild(li);
+      });
+    }
+
+    setValue('val-alert-count', totalCount > 0 ? totalCount : 'Keine');
+    setCardStatus('card-alerts', totalCount > 0 ? 'live' : 'ok', totalCount > 0 ? `${totalCount} aktiv` : 'Keine');
+
+    if (totalCount === 0) {
+      list.innerHTML = '<li class="quake-item"><div class="quake-details"><div class="quake-place">Keine aktiven Warnungen</div></div></li>';
     }
   }
 
@@ -555,16 +582,10 @@
       }
     });
 
-    // ISS button
-    $('#btn-iss')?.addEventListener('click', async () => {
-      const btn = $('#btn-iss');
-      const active = await GeoMap.toggleISS((pos) => {
-        setValue('val-iss-lat', pos.lat?.toFixed(4));
-        setValue('val-iss-lon', pos.lon?.toFixed(4));
-        setValue('val-iss-time', new Date().toLocaleTimeString('de-DE'));
-      });
-      btn.classList.toggle('active', active);
-      toast(active ? 'ISS-Tracking aktiviert' : 'ISS-Tracking deaktiviert', 'success');
+    // ISS button (syncs with ISS bar)
+    $('#btn-iss')?.addEventListener('click', () => {
+      // Trigger the ISS bar toggle instead (single source of truth)
+      $('#iss-bar-toggle')?.click();
     });
 
     // Earthquakes button
@@ -659,8 +680,108 @@
       loadNearbyPOIs(lat, lon),
       loadWeatherAlerts(lat, lon),
       loadTideData(lat, lon),
-      loadWeatherHistory(lat, lon)
+      loadWeatherHistory(lat, lon),
+      loadWebcams(lat, lon)
     ]);
+  }
+
+  // --- Load Webcams ---
+  async function loadWebcams(lat, lon) {
+    try {
+      const cams = await GeoAPI.getWebcams(lat, lon, 50);
+      setValue('val-webcam-count', cams.length);
+      const list = $('#webcam-list');
+      list.innerHTML = '';
+
+      cams.slice(0, 8).forEach(cam => {
+        const li = document.createElement('li');
+        li.className = 'quake-item';
+        li.style.cursor = 'pointer';
+        const distText = cam.distance ? `${(cam.distance / 1000).toFixed(0)} km` : '';
+        li.innerHTML = `
+          <span class="quake-mag quake-mag--low" style="font-size:.6rem">CAM</span>
+          <div class="quake-details">
+            <div class="quake-place">${cam.title}</div>
+            <div class="quake-time">${cam.city}, ${cam.country} ${distText ? '· ' + distText : ''}</div>
+          </div>`;
+        li.addEventListener('click', () => openWebcamModal(cam));
+        list.appendChild(li);
+      });
+
+      // Show on map
+      GeoMap.showWebcams(cams, openWebcamModal);
+      setCardStatus('card-webcams', 'ok', `${cams.length} Webcams`);
+    } catch {
+      setCardStatus('card-webcams', 'error', 'Fehler');
+    }
+  }
+
+  // --- Webcam Modal ---
+  function openWebcamModal(cam) {
+    const modal = $('#webcam-modal');
+    const title = $('#webcam-modal-title');
+    const body = $('#webcam-modal-body');
+
+    title.textContent = `${cam.title} – ${cam.city}, ${cam.country}`;
+
+    if (cam.embedUrl) {
+      body.innerHTML = `<iframe src="${cam.embedUrl}" allowfullscreen allow="autoplay; encrypted-media" loading="lazy" title="${cam.title}"></iframe>`;
+    } else if (cam.image) {
+      body.innerHTML = `<img src="${cam.image}" alt="${cam.title}" loading="lazy">`;
+    } else {
+      body.innerHTML = '<p style="padding:2rem;text-align:center;color:var(--text-dim)">Kein Stream verfügbar</p>';
+    }
+
+    modal.hidden = false;
+  }
+
+  function setupWebcamModal() {
+    const modal = $('#webcam-modal');
+    const closeBtn = $('#webcam-close-btn');
+    const backdrop = $('#webcam-modal-close');
+
+    const close = () => {
+      modal.hidden = true;
+      $('#webcam-modal-body').innerHTML = '';
+    };
+
+    closeBtn?.addEventListener('click', close);
+    backdrop?.addEventListener('click', close);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.hidden) close();
+    });
+  }
+
+  // --- ISS Bottom Bar ---
+  function setupISSBar() {
+    const toggle = $('#iss-bar-toggle');
+    const dataEl = $('#iss-bar-data');
+    const label = $('#iss-bar-label');
+
+    toggle?.addEventListener('click', async () => {
+      const active = await GeoMap.toggleISS((pos) => {
+        // Update bar data
+        setValue('val-iss-bar-lat', pos.lat?.toFixed(3));
+        setValue('val-iss-bar-lon', pos.lon?.toFixed(3));
+        setValue('val-iss-bar-alt', pos.altitude ? `${pos.altitude.toFixed(0)} km` : '–');
+
+        // Also update live panel data
+        setValue('val-iss-lat', pos.lat?.toFixed(4));
+        setValue('val-iss-lon', pos.lon?.toFixed(4));
+        setValue('val-iss-time', new Date().toLocaleTimeString('de-DE'));
+      });
+
+      toggle.classList.toggle('active', active);
+      label.textContent = active ? 'ISS LIVE' : 'ISS Tracking starten';
+      dataEl.hidden = !active;
+
+      if (active) {
+        // Also activate map button
+        $('#btn-iss')?.classList.add('active');
+      } else {
+        $('#btn-iss')?.classList.remove('active');
+      }
+    });
   }
 
   // --- Utility ---
@@ -692,6 +813,8 @@
     setupMapClick();
     setupMapControls();
     setupCitySearch();
+    setupWebcamModal();
+    setupISSBar();
 
     // Load IP location first (needed for other API calls)
     const ipData = await loadIPLocation();
@@ -716,7 +839,8 @@
         loadNearbyPOIs(lat, lon),
         loadWeatherAlerts(lat, lon),
         loadTideData(lat, lon),
-        loadWeatherHistory(lat, lon)
+        loadWeatherHistory(lat, lon),
+        loadWebcams(lat, lon)
       ]);
     } else {
       // Still try to load non-location-dependent data

@@ -291,15 +291,27 @@
           </div>
         </article>
 
-        <!-- Weather Alerts Card -->
+        <!-- Weather Alerts Card (Global: NWS + GDACS + Meteoalarm) -->
         <article class="card card--wide" id="card-alerts">
           <div class="card__header">
-            <h2 class="card__title">Wetterwarnungen</h2>
+            <h2 class="card__title">Krisenwarnungen</h2>
             <span class="card__status" data-status="loading">Laden...</span>
           </div>
           <div class="card__body">
             <div class="data-row"><span class="data-label">Aktive Warnungen</span><span class="data-value" id="val-alert-count">–</span></div>
-            <ul class="quake-list" id="alert-list" aria-label="Wetterwarnungen"></ul>
+            <ul class="quake-list" id="alert-list" aria-label="Krisenwarnungen"></ul>
+          </div>
+        </article>
+
+        <!-- Webcams Card -->
+        <article class="card card--wide" id="card-webcams">
+          <div class="card__header">
+            <h2 class="card__title">Live-Webcams</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Webcams in der Nähe</span><span class="data-value" id="val-webcam-count">–</span></div>
+            <ul class="quake-list" id="webcam-list" aria-label="Webcams"></ul>
           </div>
         </article>
 
@@ -350,6 +362,34 @@
       </div>
     </section>
   </main>
+
+  <!-- ISS Bottom Bar (always visible) -->
+  <div class="iss-bar" id="iss-bar">
+    <button class="iss-bar__toggle" id="iss-bar-toggle" aria-label="ISS Live-Tracking starten">
+      <span class="iss-bar__icon">🛰️</span>
+      <span class="iss-bar__label" id="iss-bar-label">ISS Tracking starten</span>
+    </button>
+    <div class="iss-bar__data" id="iss-bar-data" hidden>
+      <span class="iss-bar__stat"><span class="iss-bar__key">Lat</span> <span id="val-iss-bar-lat">–</span></span>
+      <span class="iss-bar__stat"><span class="iss-bar__key">Lon</span> <span id="val-iss-bar-lon">–</span></span>
+      <span class="iss-bar__stat"><span class="iss-bar__key">Alt</span> <span id="val-iss-bar-alt">–</span></span>
+      <span class="iss-bar__stat iss-bar__live">LIVE</span>
+    </div>
+  </div>
+
+  <!-- Webcam Modal -->
+  <div class="webcam-modal" id="webcam-modal" hidden>
+    <div class="webcam-modal__backdrop" id="webcam-modal-close"></div>
+    <div class="webcam-modal__content">
+      <div class="webcam-modal__header">
+        <h3 class="webcam-modal__title" id="webcam-modal-title">Webcam</h3>
+        <button class="webcam-modal__close" id="webcam-close-btn" aria-label="Schließen">&times;</button>
+      </div>
+      <div class="webcam-modal__body" id="webcam-modal-body">
+        <div class="skeleton" style="height:300px"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast notifications -->
   <div class="toast-container" id="toast-container" aria-live="polite"></div>
