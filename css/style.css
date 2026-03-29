@@ -469,7 +469,8 @@ img{max-width:100%;height:auto;display:block}
   overflow:hidden;
 }
 .webcam-modal__body iframe,
-.webcam-modal__body img{
+.webcam-modal__body img,
+.webcam-modal__body video{
   width:100%;
   height:auto;
   min-height:280px;
@@ -478,6 +479,18 @@ img{max-width:100%;height:auto;display:block}
   border:none;
   background:#000;
 }
+.webcam-modal__footer{
+  padding:.5rem 1rem;
+  font-size:.72rem;
+  color:var(--text-dim);
+  border-top:1px solid rgba(255,255,255,.06);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:.5rem;
+}
+.webcam-modal__footer:empty{display:none}
+.webcam-modal__footer a{color:var(--accent);font-weight:500}
 
 /* Adjust main for ISS bar */
 body{padding-bottom:3.5rem}

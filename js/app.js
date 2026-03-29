@@ -688,48 +688,88 @@
   // --- Load Webcams ---
   async function loadWebcams(lat, lon) {
     try {
-      const cams = await GeoAPI.getWebcams(lat, lon, 50);
-      setValue('val-webcam-count', cams.length);
+      const cams = await GeoAPI.getWebcams(lat, lon, 250);
+      const totalCount = await GeoAPI.getWebcamCount();
+      setValue('val-webcam-count', `${cams.length} nah / ${totalCount} gesamt`);
       const list = $('#webcam-list');
       list.innerHTML = '';
 
-      cams.slice(0, 8).forEach(cam => {
+      const typeIcons = { hls: 'LIVE', youtube: 'YT', skyline: 'SKY', mjpeg: 'IMG', page: 'WEB' };
+
+      cams.slice(0, 12).forEach(cam => {
         const li = document.createElement('li');
         li.className = 'quake-item';
         li.style.cursor = 'pointer';
         const distText = cam.distance ? `${(cam.distance / 1000).toFixed(0)} km` : '';
+        const typeClass = cam.streamType === 'hls' ? 'low' : cam.streamType === 'youtube' ? 'mid' : 'low';
         li.innerHTML = `
-          <span class="quake-mag quake-mag--low" style="font-size:.6rem">CAM</span>
+          <span class="quake-mag quake-mag--${typeClass}" style="font-size:.5rem">${typeIcons[cam.streamType] || 'CAM'}</span>
           <div class="quake-details">
             <div class="quake-place">${cam.title}</div>
-            <div class="quake-time">${cam.city}, ${cam.country} ${distText ? '· ' + distText : ''}</div>
+            <div class="quake-time">${cam.country} · ${cam.environment || cam.sceneType || ''} · ${distText}</div>
           </div>`;
         li.addEventListener('click', () => openWebcamModal(cam));
         list.appendChild(li);
       });
 
-      // Show on map
-      GeoMap.showWebcams(cams, openWebcamModal);
-      setCardStatus('card-webcams', 'ok', `${cams.length} Webcams`);
+      // Show on map (max 50 markers)
+      GeoMap.showWebcams(cams.slice(0, 50), openWebcamModal);
+      setCardStatus('card-webcams', 'ok', `${cams.length} in 250km`);
     } catch {
       setCardStatus('card-webcams', 'error', 'Fehler');
     }
   }
 
   // --- Webcam Modal ---
+  let hlsInstance = null;
+
   function openWebcamModal(cam) {
     const modal = $('#webcam-modal');
     const title = $('#webcam-modal-title');
     const body = $('#webcam-modal-body');
+    const footer = $('#webcam-modal-footer');
 
-    title.textContent = `${cam.title} – ${cam.city}, ${cam.country}`;
+    // Clean up previous HLS instance
+    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
 
-    if (cam.embedUrl) {
-      body.innerHTML = `<iframe src="${cam.embedUrl}" allowfullscreen allow="autoplay; encrypted-media" loading="lazy" title="${cam.title}"></iframe>`;
-    } else if (cam.image) {
-      body.innerHTML = `<img src="${cam.image}" alt="${cam.title}" loading="lazy">`;
+    const env = cam.environment ? ` · ${cam.environment}` : '';
+    title.textContent = cam.title;
+    footer.innerHTML = `<span>${cam.country}${env}</span><a href="${cam.url}" target="_blank" rel="noopener">Quelle öffnen ↗</a>`;
+
+    const type = cam.streamType || 'page';
+
+    if (type === 'hls' && typeof Hls !== 'undefined') {
+      // HLS.js Player for .m3u8 streams
+      body.innerHTML = '<video id="webcam-video" autoplay muted playsinline controls></video>';
+      const video = $('#webcam-video');
+      if (Hls.isSupported()) {
+        hlsInstance = new Hls({ enableWorker: false });
+        hlsInstance.loadSource(cam.url);
+        hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.ERROR, () => {
+          body.innerHTML = `<p style="padding:2rem;text-align:center;color:var(--text-dim)">Stream nicht verfügbar<br><a href="${cam.url}" target="_blank" style="color:var(--accent)">Direkt öffnen ↗</a></p>`;
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS (Safari)
+        video.src = cam.url;
+      }
+    } else if (type === 'youtube') {
+      // YouTube embed
+      const vidId = cam.url.match(/(?:v=|\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
+      if (vidId) {
+        body.innerHTML = `<iframe src="https://www.youtube.com/embed/${vidId}?autoplay=1&mute=1" allowfullscreen allow="autoplay; encrypted-media" loading="lazy" title="${cam.title}"></iframe>`;
+      }
+    } else if (type === 'mjpeg') {
+      // Direct MJPEG stream
+      body.innerHTML = `<img src="${cam.url}" alt="${cam.title}" style="object-fit:contain">`;
     } else {
-      body.innerHTML = '<p style="padding:2rem;text-align:center;color:var(--text-dim)">Kein Stream verfügbar</p>';
+      // Skylinewebcams or other page – show info + link
+      body.innerHTML = `
+        <div style="padding:2.5rem 1.5rem;text-align:center">
+          <p style="font-size:1.2rem;margin-bottom:.5rem">📹 ${cam.title}</p>
+          <p style="color:var(--text-dim);margin-bottom:1.5rem">${cam.country} · ${cam.sceneType || cam.environment || 'Webcam'}</p>
+          <a href="${cam.url}" target="_blank" rel="noopener" style="display:inline-block;padding:.6rem 1.5rem;background:var(--accent);color:#fff;border-radius:var(--radius);font-weight:600;text-decoration:none">Live-Stream öffnen ↗</a>
+        </div>`;
     }
 
     modal.hidden = false;
@@ -742,7 +782,9 @@
 
     const close = () => {
       modal.hidden = true;
+      if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
       $('#webcam-modal-body').innerHTML = '';
+      $('#webcam-modal-footer').innerHTML = '';
     };
 
     closeBtn?.addEventListener('click', close);

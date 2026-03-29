@@ -660,64 +660,59 @@ const GeoAPI = (() => {
     }
   }
 
-  // --- Webcams (Windy Webcams API v3 – free tier, no key for basic) ---
+  // --- Webcams (Live-Environment-Streams – 5.242 cameras, 80 countries, free) ---
 
-  async function getWebcams(lat, lon, radius = 50) {
-    // Primary: Windy webcams nearby (free, public embeds)
-    try {
-      const url = `https://api.windy.com/webcams/api/v3/webcams?nearby=${lat},${lon},${radius}&limit=15&include=player,location`;
-      const data = await fetchJSON(url, 'Windy Webcams', { ttl: 600_000, timeout: 8000 });
-      if (data.webcams) {
-        return data.webcams.map(w => ({
-          id: w.webcamId || w.id,
-          title: w.title,
-          lat: w.location?.latitude,
-          lon: w.location?.longitude,
-          city: w.location?.city || '',
-          country: w.location?.country || '',
-          image: w.images?.current?.preview || w.image?.current?.preview || '',
-          embedUrl: w.player?.day?.embed || w.player?.lifetime?.embed || '',
-          viewUrl: w.urls?.detail || '',
-          status: w.status,
-          lastUpdate: w.lastUpdatedOn || ''
-        }));
-      }
-    } catch { /* fallback */ }
+  let webcamCache = null;
 
-    // Fallback: curated open webcam list (well-known public webcams worldwide)
-    return getCuratedWebcams(lat, lon);
+  async function loadWebcamDatabase() {
+    if (webcamCache) return webcamCache;
+    const url = 'https://raw.githubusercontent.com/willytop8/Live-Environment-Streams/main/streams.geojson';
+    const data = await fetchJSON(url, 'Webcam DB', { ttl: 3_600_000, timeout: 15000 });
+    webcamCache = (data.features || []).map(f => ({
+      id: f.properties?.name || '',
+      title: f.properties?.name || 'Webcam',
+      lat: f.geometry?.coordinates?.[1],
+      lon: f.geometry?.coordinates?.[0],
+      url: f.properties?.url || '',
+      country: f.properties?.country_code || f.properties?.display_name || '',
+      environment: f.properties?.environment || '',
+      sceneType: f.properties?.scene_type || '',
+      quality: f.properties?.quality_tier || '',
+      source: f.properties?.source_family || '',
+      streamType: getStreamType(f.properties?.url || '')
+    })).filter(c => c.lat && c.lon);
+    return webcamCache;
   }
 
-  function getCuratedWebcams(lat, lon) {
-    // Curated list of famous public webcams with YouTube/embed streams
-    const cams = [
-      { title: 'Times Square, NYC', lat: 40.758, lon: -73.985, city: 'New York', country: 'US', embedUrl: 'https://www.youtube.com/embed/AdUw5RdyZxI?autoplay=1&mute=1', image: '' },
-      { title: 'Shibuya Crossing, Tokyo', lat: 35.659, lon: 139.700, city: 'Tokyo', country: 'JP', embedUrl: 'https://www.youtube.com/embed/3HIG_mOwEYs?autoplay=1&mute=1', image: '' },
-      { title: 'Abbey Road, London', lat: 51.532, lon: -0.178, city: 'London', country: 'GB', embedUrl: 'https://www.youtube.com/embed/dqBs3o-l4yI?autoplay=1&mute=1', image: '' },
-      { title: 'Brandenburger Tor, Berlin', lat: 52.516, lon: 13.377, city: 'Berlin', country: 'DE', embedUrl: 'https://www.youtube.com/embed/sFgMjAAMfKQ?autoplay=1&mute=1', image: '' },
-      { title: 'Jackson Hole, Wyoming', lat: 43.480, lon: -110.763, city: 'Jackson', country: 'US', embedUrl: 'https://www.youtube.com/embed/1EiC9bvVGnk?autoplay=1&mute=1', image: '' },
-      { title: 'Playa de Las Americas, Tenerife', lat: 28.052, lon: -16.726, city: 'Tenerife', country: 'ES', embedUrl: 'https://www.youtube.com/embed/Gu_YJsdMkco?autoplay=1&mute=1', image: '' },
-      { title: 'Venice Grand Canal', lat: 45.434, lon: 12.338, city: 'Venedig', country: 'IT', embedUrl: 'https://www.youtube.com/embed/vPbQcM4k1Ps?autoplay=1&mute=1', image: '' },
-      { title: 'Bosphorus, Istanbul', lat: 41.022, lon: 29.004, city: 'Istanbul', country: 'TR', embedUrl: 'https://www.youtube.com/embed/a4KErS-Pxgo?autoplay=1&mute=1', image: '' },
-      { title: 'Durban Beach, South Africa', lat: -29.856, lon: 31.029, city: 'Durban', country: 'ZA', embedUrl: 'https://www.youtube.com/embed/FLe6kcVJjOQ?autoplay=1&mute=1', image: '' },
-      { title: 'Miami Beach', lat: 25.790, lon: -80.130, city: 'Miami', country: 'US', embedUrl: 'https://www.youtube.com/embed/JYElZDO8g5M?autoplay=1&mute=1', image: '' },
-      { title: 'Namsan Tower, Seoul', lat: 37.551, lon: 126.988, city: 'Seoul', country: 'KR', embedUrl: 'https://www.youtube.com/embed/pOhOKcjPmjk?autoplay=1&mute=1', image: '' },
-      { title: 'Amsterdam Dam Square', lat: 52.373, lon: 4.893, city: 'Amsterdam', country: 'NL', embedUrl: 'https://www.youtube.com/embed/ja1MQfiReco?autoplay=1&mute=1', image: '' },
-      { title: 'Prague Old Town', lat: 50.087, lon: 14.421, city: 'Prag', country: 'CZ', embedUrl: 'https://www.youtube.com/embed/zQxDp1NAZ-E?autoplay=1&mute=1', image: '' },
-      { title: 'Barcelona La Rambla', lat: 41.381, lon: 2.173, city: 'Barcelona', country: 'ES', embedUrl: 'https://www.youtube.com/embed/M7h_LB-VpXQ?autoplay=1&mute=1', image: '' },
-      { title: 'Paris Eiffel Tower', lat: 48.858, lon: 2.294, city: 'Paris', country: 'FR', embedUrl: 'https://www.youtube.com/embed/cFhPCpm0Cog?autoplay=1&mute=1', image: '' },
-      { title: 'Sydney Harbour', lat: -33.857, lon: 151.215, city: 'Sydney', country: 'AU', embedUrl: 'https://www.youtube.com/embed/eKSqnfmEqd8?autoplay=1&mute=1', image: '' },
-      { title: 'Yellowstone Old Faithful', lat: 44.460, lon: -110.828, city: 'Yellowstone', country: 'US', embedUrl: 'https://www.youtube.com/embed/BlNJRHQpmlM?autoplay=1&mute=1', image: '' },
-      { title: 'Nairobi Kenya', lat: -1.286, lon: 36.817, city: 'Nairobi', country: 'KE', embedUrl: 'https://www.youtube.com/embed/ydYDqZQpim8?autoplay=1&mute=1', image: '' },
-      { title: 'Rio de Janeiro Copacabana', lat: -22.971, lon: -43.182, city: 'Rio', country: 'BR', embedUrl: 'https://www.youtube.com/embed/5gHLJiQxJdo?autoplay=1&mute=1', image: '' },
-      { title: 'Dubai Burj Khalifa', lat: 25.197, lon: 55.274, city: 'Dubai', country: 'AE', embedUrl: 'https://www.youtube.com/embed/lot2sZNRkng?autoplay=1&mute=1', image: '' },
-    ];
-    // Sort by distance to user
-    return cams.map(c => ({
-      ...c,
-      id: c.title,
-      distance: haversine(lat, lon, c.lat, c.lon)
-    })).sort((a, b) => a.distance - b.distance);
+  function getStreamType(url) {
+    if (url.includes('.m3u8')) return 'hls';
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+    if (url.includes('skylinewebcams.com')) return 'skyline';
+    if (url.includes('.mjpg') || url.includes('.mjpeg')) return 'mjpeg';
+    return 'page';
+  }
+
+  async function getWebcams(lat, lon, radius = 250) {
+    try {
+      const all = await loadWebcamDatabase();
+      // Filter by distance and sort
+      return all
+        .map(c => ({ ...c, distance: haversine(lat, lon, c.lat, c.lon) }))
+        .filter(c => c.distance <= radius * 1000)
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 30);
+    } catch {
+      return [];
+    }
+  }
+
+  async function getWebcamCount() {
+    try {
+      const all = await loadWebcamDatabase();
+      return all.length;
+    } catch {
+      return 0;
+    }
   }
 
   // --- Public interface ---
@@ -746,6 +741,7 @@ const GeoAPI = (() => {
     getGDACSAlerts,
     getEuropeanQuakes,
     getWebcams,
+    getWebcamCount,
     getStatus: () => ({ ...apiStatus })
   };
 })();
