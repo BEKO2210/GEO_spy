@@ -158,9 +158,9 @@ img{max-width:100%;height:auto;display:block}
 .map-info-card{
   position:absolute;
   bottom:calc(1.5rem + var(--safe-bottom));
-  left:1rem;
+  left:3.5rem;
   right:5rem;
-  z-index:800;
+  z-index:850;
   background:var(--bg-card);
   border:1px solid rgba(255,255,255,.08);
   border-radius:var(--radius);
@@ -191,7 +191,7 @@ img{max-width:100%;height:auto;display:block}
   top:.75rem;
   left:.75rem;
   right:4.5rem;
-  z-index:800;
+  z-index:1100;
 }
 .search-input{
   width:100%;
@@ -362,6 +362,7 @@ img{max-width:100%;height:auto;display:block}
   animation:toast-in .3s ease;
   pointer-events:auto;
 }
+.toast--info{border-color:var(--accent);color:var(--accent)}
 .toast--error{border-color:var(--danger);color:var(--danger)}
 .toast--success{border-color:var(--success);color:var(--success)}
 @keyframes toast-in{
@@ -412,6 +413,9 @@ img{max-width:100%;height:auto;display:block}
     transition-duration:.01ms!important;
   }
 }
+
+/* --- Map markers --- */
+.geo-marker{background:none!important;border:none!important}
 
 /* --- Leaflet overrides --- */
 .leaflet-control-zoom{border:none!important}

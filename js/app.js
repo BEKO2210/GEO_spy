@@ -12,6 +12,7 @@
   // State
   let currentLocation = null;
   let currentPanel = 'map';
+  let timezoneInterval = null;
 
   // --- Panel Navigation ---
   function initNavigation() {
@@ -20,8 +21,9 @@
         const panel = btn.dataset.panel;
         if (panel === currentPanel) return;
 
-        $$('.nav-btn').forEach(b => b.classList.remove('active'));
+        $$('.nav-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
         btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
 
         $$('.panel').forEach(p => p.classList.remove('active'));
         $(`#panel-${panel}`).classList.add('active');
@@ -79,6 +81,7 @@
       setValue('val-coords', `${data.lat?.toFixed(4)}, ${data.lon?.toFixed(4)}`);
       setValue('val-asn', data.asn);
       setValue('val-org', data.isp);
+      setValue('val-connection-type', data.isVPN ? 'VPN/Proxy erkannt' : 'Direkt');
 
       setCardStatus('card-ip', 'ok', data.source);
       setCardStatus('card-network', 'ok', 'OK');
@@ -182,8 +185,9 @@
       setValue('val-utc', data.utcOffset);
       setCardStatus('card-timezone', 'ok', 'OK');
 
-      // Update local time every second
-      setInterval(() => {
+      // Update local time every second (clear previous interval)
+      if (timezoneInterval) clearInterval(timezoneInterval);
+      timezoneInterval = setInterval(() => {
         try {
           const now = new Date();
           const opts = { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: data.timezone };
@@ -416,7 +420,8 @@
     try {
       const data = await GeoAPI.getEarthquakes();
       setValue('val-quake-count', `${data.count} Erdbeben`);
-      setValue('val-quake-max', data.quakes[0] ? `M${data.quakes[0].mag.toFixed(1)} – ${data.quakes[0].place}` : '–');
+      const strongest = data.quakes[0];
+      setValue('val-quake-max', strongest && strongest.mag != null ? `M${strongest.mag.toFixed(1)} – ${strongest.place}` : '–');
 
       const list = $('#quake-list');
       list.innerHTML = '';
@@ -432,23 +437,14 @@
             <div class="quake-time">${timeAgo} · Tiefe: ${q.depth?.toFixed(0)} km</div>
           </div>`;
         li.addEventListener('click', () => {
-          // Switch to map and show earthquake
+          // Switch to map and fly to earthquake
           $$('.nav-btn').forEach(b => b.classList.remove('active'));
           $$('.nav-btn')[0].classList.add('active');
           $$('.panel').forEach(p => p.classList.remove('active'));
           $('#panel-map').classList.add('active');
           currentPanel = 'map';
           document.dispatchEvent(new Event('panel-switch'));
-          // This timeout ensures map has resized before flying
-          setTimeout(() => {
-            if (typeof L !== 'undefined') {
-              const mapEl = document.querySelector('.leaflet-container');
-              if (mapEl && mapEl._leaflet_id) {
-                // We can't easily access the Leaflet map instance here,
-                // but GeoMap module handles it
-              }
-            }
-          }, 200);
+          setTimeout(() => GeoMap.flyTo(q.lat, q.lon, 6), 200);
         });
         list.appendChild(li);
       });
@@ -577,8 +573,15 @@
       const shouldShow = GeoMap.toggleEarthquakes();
 
       if (shouldShow) {
-        const data = await GeoAPI.getEarthquakes();
-        if (data) GeoMap.showEarthquakes(data.quakes);
+        try {
+          const data = await GeoAPI.getEarthquakes();
+          if (data) GeoMap.showEarthquakes(data.quakes);
+        } catch {
+          GeoMap.clearEarthquakes();
+          btn.classList.remove('active');
+          toast('Erdbeben konnten nicht geladen werden', 'error');
+          return;
+        }
       } else {
         GeoMap.clearEarthquakes();
       }

@@ -124,8 +124,8 @@ const GeoAPI = (() => {
       };
     } catch { /* fallback */ }
 
-    // Fallback: geoplugin.net
-    const data = await fetchJSON('http://www.geoplugin.net/json.gp', 'geoplugin.net');
+    // Fallback: geoplugin.net (HTTPS)
+    const data = await fetchJSON('https://www.geoplugin.net/json.gp', 'geoplugin.net');
     return {
       ip: data.geoplugin_request,
       lat: parseFloat(data.geoplugin_latitude),
@@ -466,7 +466,7 @@ const GeoAPI = (() => {
 
   async function getPeopleInSpace() {
     try {
-      const data = await fetchJSON('http://api.open-notify.org/astros.json', 'Open Notify Astros', { timeout: 5000 });
+      const data = await fetchJSON('https://api.open-notify.org/astros.json', 'Open Notify Astros', { timeout: 5000 });
       if (data.message === 'success') {
         return {
           count: data.number,
@@ -546,11 +546,10 @@ const GeoAPI = (() => {
   // --- NOAA Tides (US coastal stations, free) ---
 
   async function getTideData(lat, lon) {
-    // Find nearest station – use a known major station based on rough proximity
-    // NOAA has fixed station IDs; we try the point forecast
+    // Use nearest major NOAA station based on rough lat/lon
+    const stationId = findNearestTideStation(lat, lon);
     try {
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const url = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=today&product=predictions&datum=MLLW&time_zone=lst_ldt&units=metric&format=json&station=9414290`;
+      const url = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=today&product=predictions&datum=MLLW&time_zone=lst_ldt&units=metric&format=json&station=${stationId}`;
       const data = await fetchJSON(url, 'NOAA Tides', { ttl: 600_000 });
       if (data.predictions && data.predictions.length) {
         const preds = data.predictions;
@@ -570,6 +569,31 @@ const GeoAPI = (() => {
       }
     } catch { /* not available */ }
     return { available: false };
+  }
+
+  function findNearestTideStation(lat, lon) {
+    // Major NOAA tide stations by region
+    const stations = [
+      { id: '8518750', lat: 40.70, lon: -74.01 },   // NYC Battery
+      { id: '9414290', lat: 37.81, lon: -122.47 },   // San Francisco
+      { id: '8723214', lat: 25.73, lon: -80.16 },    // Miami
+      { id: '8658120', lat: 33.95, lon: -77.95 },    // Wilmington NC
+      { id: '8443970', lat: 42.35, lon: -71.05 },    // Boston
+      { id: '8574680', lat: 38.98, lon: -76.48 },    // Baltimore
+      { id: '9410660', lat: 33.72, lon: -118.27 },   // Los Angeles
+      { id: '9447130', lat: 47.60, lon: -122.34 },   // Seattle
+      { id: '8726520', lat: 27.76, lon: -82.63 },    // St Petersburg FL
+      { id: '8771450', lat: 29.31, lon: -94.79 },    // Galveston TX
+      { id: '1612340', lat: 21.31, lon: -157.87 },   // Honolulu
+      { id: '9461380', lat: 60.12, lon: -149.43 },   // Adak AK
+    ];
+    let best = stations[0];
+    let bestDist = Infinity;
+    stations.forEach(s => {
+      const d = (s.lat - lat) ** 2 + (s.lon - lon) ** 2;
+      if (d < bestDist) { bestDist = d; best = s; }
+    });
+    return best.id;
   }
 
   // --- Open-Meteo Historical Weather (last 7 days for comparison) ---

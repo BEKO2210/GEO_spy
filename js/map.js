@@ -34,7 +34,7 @@ const GeoMap = (() => {
       name: 'Satellit',
       url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       attribution: '&copy; <a href="https://www.esri.com/">Esri</a> &copy; Earthstar Geographics',
-      subdomains: ''
+      noSubdomains: true
     },
     {
       name: 'Topographie',
@@ -58,9 +58,12 @@ const GeoMap = (() => {
     map = L.map('map', {
       center: [20, 0],
       zoom: 2,
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: false
     });
+
+    // Zoom controls bottom-left (avoids search bar overlap)
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
     // Custom attribution with "Belkis" instead of Leaflet
     L.control.attribution({ prefix: 'Belkis' }).addTo(map);
@@ -69,7 +72,7 @@ const GeoMap = (() => {
     const layer = tileLayers[0];
     currentTileLayer = L.tileLayer(layer.url, {
       attribution: layer.attribution,
-      subdomains: layer.subdomains || 'abc',
+      subdomains: layer.noSubdomains ? [] : (layer.subdomains || 'abc'),
       maxZoom: 19
     }).addTo(map);
 
@@ -150,7 +153,9 @@ const GeoMap = (() => {
     }
 
     await updateISS();
-    map.flyTo(issMarker.getLatLng(), 3, { duration: 1.5 });
+    if (issMarker) {
+      map.flyTo(issMarker.getLatLng(), 3, { duration: 1.5 });
+    }
     issInterval = setInterval(updateISS, 5000);
     return true;
   }
@@ -197,6 +202,7 @@ const GeoMap = (() => {
   function getTimeAgo(timestamp) {
     const diff = Date.now() - timestamp;
     const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'gerade eben';
     if (mins < 60) return `vor ${mins} Min.`;
     const hours = Math.floor(mins / 60);
     if (hours < 24) return `vor ${hours} Std.`;
@@ -211,7 +217,7 @@ const GeoMap = (() => {
     if (currentTileLayer) map.removeLayer(currentTileLayer);
     currentTileLayer = L.tileLayer(layer.url, {
       attribution: layer.attribution,
-      subdomains: layer.subdomains || 'abc',
+      subdomains: layer.noSubdomains ? [] : (layer.subdomains || 'abc'),
       maxZoom: 19
     }).addTo(map);
 
@@ -235,6 +241,7 @@ const GeoMap = (() => {
     showEarthquakes,
     clearEarthquakes,
     toggleEarthquakes,
+    flyTo: (lat, lon, zoom) => { if (map) map.flyTo([lat, lon], zoom || 10, { duration: 1.5 }); },
     isISSActive,
     isQuakesActive,
     onMapClick,
