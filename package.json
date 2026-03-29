@@ -1,0 +1,17 @@
+{
+  "name": "geo-spy",
+  "version": "1.0.0",
+  "description": "Open Source Live GEO Tracking Platform",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "dev": "npx serve .",
+    "lint": "echo 'No linter configured'"
+  },
+  "devDependencies": {
+    "html-minifier-terser": "^7.2.0",
+    "clean-css": "^5.3.3",
+    "terser": "^5.31.0"
+  },
+  "license": "MIT"
+}

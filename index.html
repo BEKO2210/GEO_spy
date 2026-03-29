@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="de" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="description" content="Open Source Live GEO Tracking Platform – Echtzeit-Geodaten, Erdbeben, ISS-Tracking, Wetter und mehr.">
+  <meta name="theme-color" content="#0a0e1a">
+  <meta name="color-scheme" content="dark">
+  <title>GEO Spy – Live GEO Tracking</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></noscript>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header" role="banner">
+    <div class="header__brand">
+      <span class="header__logo" aria-hidden="true">🌍</span>
+      <h1 class="header__title">GEO Spy</h1>
+      <span class="header__badge">LIVE</span>
+    </div>
+    <nav class="header__nav" aria-label="Hauptnavigation">
+      <button class="nav-btn active" data-panel="map" aria-label="Karte anzeigen">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        <span>Karte</span>
+      </button>
+      <button class="nav-btn" data-panel="data" aria-label="Daten anzeigen">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Daten</span>
+      </button>
+      <button class="nav-btn" data-panel="live" aria-label="Live-Feeds anzeigen">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>
+        <span>Live</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="main">
+    <!-- Map Panel -->
+    <section class="panel panel--map active" id="panel-map" role="tabpanel" aria-label="Kartenansicht">
+      <div id="map" class="map"></div>
+      <div class="map-controls">
+        <button class="map-ctrl-btn" id="btn-locate" aria-label="Meinen Standort finden">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+        </button>
+        <button class="map-ctrl-btn" id="btn-iss" aria-label="ISS verfolgen">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><ellipse cx="12" cy="12" rx="4" ry="10"/></svg>
+        </button>
+        <button class="map-ctrl-btn" id="btn-quakes" aria-label="Erdbeben anzeigen">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12l3-3 3 6 3-9 3 12 3-6 3 3"/></svg>
+        </button>
+      </div>
+      <!-- Floating info card on map -->
+      <div class="map-info-card" id="map-info-card" hidden>
+        <button class="map-info-card__close" aria-label="Schließen">&times;</button>
+        <div class="map-info-card__content" id="map-info-content"></div>
+      </div>
+    </section>
+
+    <!-- Data Panel -->
+    <section class="panel panel--data" id="panel-data" role="tabpanel" aria-label="Geodaten">
+      <div class="cards-grid">
+        <!-- IP Location Card -->
+        <article class="card" id="card-ip">
+          <div class="card__header">
+            <h2 class="card__title">IP-Standort</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">IP</span><span class="data-value" id="val-ip">–</span></div>
+            <div class="data-row"><span class="data-label">Land</span><span class="data-value" id="val-country">–</span></div>
+            <div class="data-row"><span class="data-label">Stadt</span><span class="data-value" id="val-city">–</span></div>
+            <div class="data-row"><span class="data-label">Region</span><span class="data-value" id="val-region">–</span></div>
+            <div class="data-row"><span class="data-label">ISP</span><span class="data-value" id="val-isp">–</span></div>
+            <div class="data-row"><span class="data-label">Koordinaten</span><span class="data-value" id="val-coords">–</span></div>
+          </div>
+        </article>
+
+        <!-- Reverse Geocoding Card -->
+        <article class="card" id="card-geo">
+          <div class="card__header">
+            <h2 class="card__title">Adresse</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Straße</span><span class="data-value" id="val-street">–</span></div>
+            <div class="data-row"><span class="data-label">PLZ</span><span class="data-value" id="val-zip">–</span></div>
+            <div class="data-row"><span class="data-label">Ort</span><span class="data-value" id="val-place">–</span></div>
+            <div class="data-row"><span class="data-label">Bundesland</span><span class="data-value" id="val-state">–</span></div>
+            <div class="data-row"><span class="data-label">Land</span><span class="data-value" id="val-geo-country">–</span></div>
+          </div>
+        </article>
+
+        <!-- Elevation Card -->
+        <article class="card" id="card-elevation">
+          <div class="card__header">
+            <h2 class="card__title">Höhe & Gelände</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Höhe</span><span class="data-value" id="val-elevation">–</span></div>
+            <div class="data-row"><span class="data-label">Wasser</span><span class="data-value" id="val-water">–</span></div>
+          </div>
+        </article>
+
+        <!-- Timezone Card -->
+        <article class="card" id="card-timezone">
+          <div class="card__header">
+            <h2 class="card__title">Zeitzone</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Zone</span><span class="data-value" id="val-timezone">–</span></div>
+            <div class="data-row"><span class="data-label">Uhrzeit</span><span class="data-value" id="val-localtime">–</span></div>
+            <div class="data-row"><span class="data-label">UTC Offset</span><span class="data-value" id="val-utc">–</span></div>
+          </div>
+        </article>
+
+        <!-- Weather Card -->
+        <article class="card" id="card-weather">
+          <div class="card__header">
+            <h2 class="card__title">Wetter</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Temperatur</span><span class="data-value" id="val-temp">–</span></div>
+            <div class="data-row"><span class="data-label">Wind</span><span class="data-value" id="val-wind">–</span></div>
+            <div class="data-row"><span class="data-label">Zustand</span><span class="data-value" id="val-weather-desc">–</span></div>
+            <div class="data-row"><span class="data-label">Luftfeuchtigkeit</span><span class="data-value" id="val-humidity">–</span></div>
+          </div>
+        </article>
+
+        <!-- Sun Card -->
+        <article class="card" id="card-sun">
+          <div class="card__header">
+            <h2 class="card__title">Sonne</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Sonnenaufgang</span><span class="data-value" id="val-sunrise">–</span></div>
+            <div class="data-row"><span class="data-label">Sonnenuntergang</span><span class="data-value" id="val-sunset">–</span></div>
+            <div class="data-row"><span class="data-label">Tageslänge</span><span class="data-value" id="val-daylength">–</span></div>
+          </div>
+        </article>
+
+        <!-- Country Info Card -->
+        <article class="card" id="card-country">
+          <div class="card__header">
+            <h2 class="card__title">Land-Info</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Einwohner</span><span class="data-value" id="val-population">–</span></div>
+            <div class="data-row"><span class="data-label">Fläche</span><span class="data-value" id="val-area">–</span></div>
+            <div class="data-row"><span class="data-label">Hauptstadt</span><span class="data-value" id="val-capital">–</span></div>
+            <div class="data-row"><span class="data-label">Währung</span><span class="data-value" id="val-currency">–</span></div>
+            <div class="data-row"><span class="data-label">Sprachen</span><span class="data-value" id="val-languages">–</span></div>
+            <div class="data-row"><span class="data-label">Flagge</span><span class="data-value" id="val-flag">–</span></div>
+          </div>
+        </article>
+
+        <!-- Network Card -->
+        <article class="card" id="card-network">
+          <div class="card__header">
+            <h2 class="card__title">Netzwerk</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">ASN</span><span class="data-value" id="val-asn">–</span></div>
+            <div class="data-row"><span class="data-label">Organisation</span><span class="data-value" id="val-org">–</span></div>
+            <div class="data-row"><span class="data-label">Typ</span><span class="data-value" id="val-connection-type">–</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Live Panel -->
+    <section class="panel panel--live" id="panel-live" role="tabpanel" aria-label="Live-Feeds">
+      <div class="cards-grid">
+        <!-- ISS Tracker Card -->
+        <article class="card card--wide" id="card-iss">
+          <div class="card__header">
+            <h2 class="card__title">ISS Live-Tracking</h2>
+            <span class="card__status card__status--live" data-status="live">LIVE</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Breitengrad</span><span class="data-value" id="val-iss-lat">–</span></div>
+            <div class="data-row"><span class="data-label">Längengrad</span><span class="data-value" id="val-iss-lon">–</span></div>
+            <div class="data-row"><span class="data-label">Geschwindigkeit</span><span class="data-value" id="val-iss-speed">~28.000 km/h</span></div>
+            <div class="data-row"><span class="data-label">Über</span><span class="data-value" id="val-iss-over">–</span></div>
+            <div class="data-row"><span class="data-label">Aktualisiert</span><span class="data-value" id="val-iss-time">–</span></div>
+          </div>
+        </article>
+
+        <!-- Earthquakes Card -->
+        <article class="card card--wide" id="card-quakes">
+          <div class="card__header">
+            <h2 class="card__title">Erdbeben (24h)</h2>
+            <span class="card__status card__status--live" data-status="live">LIVE</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Gesamt</span><span class="data-value" id="val-quake-count">–</span></div>
+            <div class="data-row"><span class="data-label">Stärkstes</span><span class="data-value" id="val-quake-max">–</span></div>
+            <ul class="quake-list" id="quake-list" aria-label="Aktuelle Erdbeben"></ul>
+          </div>
+        </article>
+
+        <!-- Sunrise/Sunset API Status -->
+        <article class="card" id="card-api-status">
+          <div class="card__header">
+            <h2 class="card__title">API-Status</h2>
+            <span class="card__status" data-status="loading">Prüfe...</span>
+          </div>
+          <div class="card__body" id="api-status-list">
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast notifications -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="js/api.js" defer></script>
+  <script src="js/map.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>
