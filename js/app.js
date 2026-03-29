@@ -209,6 +209,86 @@
     }
   }
 
+  // --- Load Natural Events (NASA EONET) ---
+  async function loadNaturalEvents() {
+    try {
+      const data = await GeoAPI.getNaturalEvents();
+      setValue('val-events-count', data.count);
+      const list = $('#events-list');
+      list.innerHTML = '';
+      data.events.slice(0, 8).forEach(ev => {
+        const li = document.createElement('li');
+        li.className = 'quake-item';
+        const dateStr = ev.date ? new Date(ev.date).toLocaleDateString('de-DE') : '';
+        li.innerHTML = `
+          <span class="quake-mag quake-mag--mid" style="font-size:.6rem;width:2.5rem;height:2.5rem">${ev.category.slice(0, 4)}</span>
+          <div class="quake-details">
+            <div class="quake-place">${ev.title}</div>
+            <div class="quake-time">${ev.category} · ${dateStr}</div>
+          </div>`;
+        list.appendChild(li);
+      });
+      setCardStatus('card-events', 'live', `${data.count} aktiv`);
+    } catch {
+      setCardStatus('card-events', 'error', 'Fehler');
+    }
+  }
+
+  // --- Load Marine Data ---
+  async function loadMarineData(lat, lon) {
+    try {
+      const data = await GeoAPI.getMarineData(lat, lon);
+      setValue('val-wave-height', data.waveHeight != null ? `${data.waveHeight} m` : 'N/A (Binnenland)');
+      setValue('val-wave-dir', data.waveDirection != null ? `${data.waveDirection}°` : '–');
+      setValue('val-wave-period', data.wavePeriod != null ? `${data.wavePeriod} s` : '–');
+      setValue('val-swell', data.swellHeight != null ? `${data.swellHeight} m` : '–');
+      setCardStatus('card-marine', 'ok', 'OK');
+    } catch {
+      setCardStatus('card-marine', 'ok', 'Binnenland');
+      setValue('val-wave-height', 'N/A');
+    }
+  }
+
+  // --- Load Flood Data ---
+  async function loadFloodData(lat, lon) {
+    try {
+      const data = await GeoAPI.getFloodData(lat, lon);
+      setValue('val-flood-current', data.current != null ? `${data.current.toFixed(1)} m³/s` : 'Kein Fluss');
+      setValue('val-flood-max', data.max7d != null ? `${data.max7d.toFixed(1)} m³/s` : '–');
+      setCardStatus('card-flood', 'ok', 'OK');
+    } catch {
+      setCardStatus('card-flood', 'ok', 'Keine Daten');
+    }
+  }
+
+  // --- Load People in Space ---
+  async function loadPeopleInSpace() {
+    try {
+      const data = await GeoAPI.getPeopleInSpace();
+      if (data.count != null) {
+        setValue('val-astro-count', data.count);
+        const list = $('#astro-list');
+        list.innerHTML = '';
+        data.people.forEach(p => {
+          const li = document.createElement('li');
+          li.className = 'quake-item';
+          li.innerHTML = `
+            <span class="quake-mag quake-mag--low" style="font-size:.7rem">ISS</span>
+            <div class="quake-details">
+              <div class="quake-place">${p.name}</div>
+              <div class="quake-time">${p.craft}</div>
+            </div>`;
+          list.appendChild(li);
+        });
+        setCardStatus('card-astros', 'ok', `${data.count} Personen`);
+      } else {
+        setCardStatus('card-astros', 'error', 'N/A');
+      }
+    } catch {
+      setCardStatus('card-astros', 'error', 'Fehler');
+    }
+  }
+
   // --- Load Earthquakes ---
   async function loadEarthquakes() {
     try {
@@ -436,11 +516,19 @@
         loadTimezone(lat, lon, ipData.timezone),
         loadCountryInfo(ipData.countryCode),
         loadEarthquakes(),
-        loadAirQuality(lat, lon)
+        loadAirQuality(lat, lon),
+        loadNaturalEvents(),
+        loadMarineData(lat, lon),
+        loadFloodData(lat, lon),
+        loadPeopleInSpace()
       ]);
     } else {
-      // Still try to load earthquakes
-      await loadEarthquakes();
+      // Still try to load non-location-dependent data
+      await Promise.allSettled([
+        loadEarthquakes(),
+        loadNaturalEvents(),
+        loadPeopleInSpace()
+      ]);
     }
 
     // Auto-refresh earthquakes every 2 minutes

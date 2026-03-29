@@ -231,8 +231,58 @@
           </div>
         </article>
 
-        <!-- Sunrise/Sunset API Status -->
-        <article class="card" id="card-api-status">
+        <!-- NASA Natural Events Card -->
+        <article class="card card--wide" id="card-events">
+          <div class="card__header">
+            <h2 class="card__title">Naturereignisse (7 Tage)</h2>
+            <span class="card__status card__status--live" data-status="live">NASA</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Aktive Ereignisse</span><span class="data-value" id="val-events-count">–</span></div>
+            <ul class="quake-list" id="events-list" aria-label="Aktuelle Naturereignisse"></ul>
+          </div>
+        </article>
+
+        <!-- Marine Data Card -->
+        <article class="card" id="card-marine">
+          <div class="card__header">
+            <h2 class="card__title">Meerdaten</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Wellenhöhe</span><span class="data-value" id="val-wave-height">–</span></div>
+            <div class="data-row"><span class="data-label">Wellenrichtung</span><span class="data-value" id="val-wave-dir">–</span></div>
+            <div class="data-row"><span class="data-label">Wellenperiode</span><span class="data-value" id="val-wave-period">–</span></div>
+            <div class="data-row"><span class="data-label">Dünung</span><span class="data-value" id="val-swell">–</span></div>
+          </div>
+        </article>
+
+        <!-- Flood Data Card -->
+        <article class="card" id="card-flood">
+          <div class="card__header">
+            <h2 class="card__title">Hochwasser</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Abfluss aktuell</span><span class="data-value" id="val-flood-current">–</span></div>
+            <div class="data-row"><span class="data-label">Max. 7 Tage</span><span class="data-value" id="val-flood-max">–</span></div>
+          </div>
+        </article>
+
+        <!-- People in Space Card -->
+        <article class="card" id="card-astros">
+          <div class="card__header">
+            <h2 class="card__title">Menschen im All</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">Anzahl</span><span class="data-value" id="val-astro-count">–</span></div>
+            <ul class="quake-list" id="astro-list" aria-label="Menschen im Weltraum"></ul>
+          </div>
+        </article>
+
+        <!-- API Status -->
+        <article class="card card--wide" id="card-api-status">
           <div class="card__header">
             <h2 class="card__title">API-Status</h2>
             <span class="card__status" data-status="loading">Prüfe...</span>

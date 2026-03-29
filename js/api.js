@@ -329,6 +329,71 @@ const GeoAPI = (() => {
     return 'Gefährlich';
   }
 
+  // --- NASA EONET Natural Events (free, no key) ---
+
+  async function getNaturalEvents() {
+    const url = 'https://eonet.gsfc.nasa.gov/api/v3/events?limit=20&days=7';
+    const data = await fetchJSON(url, 'NASA EONET', { ttl: 300_000 });
+    return {
+      count: data.events?.length || 0,
+      events: (data.events || []).map(e => ({
+        id: e.id,
+        title: e.title,
+        category: e.categories?.[0]?.title || '',
+        date: e.geometry?.[0]?.date || '',
+        lat: e.geometry?.[0]?.coordinates?.[1],
+        lon: e.geometry?.[0]?.coordinates?.[0],
+        source: e.sources?.[0]?.url || ''
+      }))
+    };
+  }
+
+  // --- Open-Meteo Marine API (waves, free, no key) ---
+
+  async function getMarineData(lat, lon) {
+    const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height&timezone=auto`;
+    const data = await fetchJSON(url, 'Open-Meteo Marine');
+    const c = data.current;
+    return {
+      waveHeight: c.wave_height,
+      waveDirection: c.wave_direction,
+      wavePeriod: c.wave_period,
+      swellHeight: c.swell_wave_height,
+      units: data.current_units || {}
+    };
+  }
+
+  // --- Open-Meteo Flood API (river discharge, free, no key) ---
+
+  async function getFloodData(lat, lon) {
+    const url = `https://flood-api.open-meteo.com/v1/flood?latitude=${lat}&longitude=${lon}&daily=river_discharge&forecast_days=7`;
+    const data = await fetchJSON(url, 'Open-Meteo Flood', { ttl: 600_000 });
+    const daily = data.daily || {};
+    const discharges = daily.river_discharge || [];
+    const dates = daily.time || [];
+    const maxDischarge = discharges.length ? Math.max(...discharges.filter(d => d != null)) : null;
+    return {
+      current: discharges[0] ?? null,
+      max7d: maxDischarge,
+      forecast: dates.map((d, i) => ({ date: d, discharge: discharges[i] }))
+    };
+  }
+
+  // --- People in Space (Open Notify, free) ---
+
+  async function getPeopleInSpace() {
+    try {
+      const data = await fetchJSON('http://api.open-notify.org/astros.json', 'Open Notify Astros', { timeout: 5000 });
+      if (data.message === 'success') {
+        return {
+          count: data.number,
+          people: data.people || []
+        };
+      }
+    } catch { /* may fail due to HTTP-only */ }
+    return { count: null, people: [] };
+  }
+
   // --- Public interface ---
   return {
     getIPLocation,
@@ -342,6 +407,10 @@ const GeoAPI = (() => {
     getISSPosition,
     getEarthquakes,
     getAirQuality,
+    getNaturalEvents,
+    getMarineData,
+    getFloodData,
+    getPeopleInSpace,
     getStatus: () => ({ ...apiStatus })
   };
 })();
