@@ -59,8 +59,11 @@ const GeoMap = (() => {
       center: [20, 0],
       zoom: 2,
       zoomControl: true,
-      attributionControl: true
+      attributionControl: false
     });
+
+    // Custom attribution with "Belkis" instead of Leaflet
+    L.control.attribution({ prefix: 'Belkis' }).addTo(map);
 
     // Default tile layer (Dark)
     const layer = tileLayers[0];
