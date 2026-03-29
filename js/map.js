@@ -224,41 +224,6 @@ const GeoMap = (() => {
     return layer.name;
   }
 
-  // --- Webcam Markers ---
-  let webcamLayer = null;
-
-  function showWebcams(webcams, onWebcamClick) {
-    if (!webcamLayer) webcamLayer = L.layerGroup().addTo(map);
-    webcamLayer.clearLayers();
-
-    webcams.forEach(cam => {
-      if (!cam.lat || !cam.lon) return;
-      const marker = L.marker([cam.lat, cam.lon], {
-        icon: L.divIcon({
-          html: '<span style="font-size:22px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))">📹</span>',
-          iconSize: [22, 22],
-          iconAnchor: [11, 11],
-          className: 'geo-marker'
-        })
-      }).addTo(webcamLayer);
-
-      marker.bindPopup(`<strong>${cam.title}</strong><br>${cam.city}, ${cam.country}<br><a href="#" class="webcam-open" data-id="${cam.id}">Live ansehen</a>`);
-      marker.on('popupopen', () => {
-        const link = document.querySelector(`.webcam-open[data-id="${cam.id}"]`);
-        if (link) {
-          link.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (onWebcamClick) onWebcamClick(cam);
-          });
-        }
-      });
-    });
-  }
-
-  function clearWebcams() {
-    if (webcamLayer) webcamLayer.clearLayers();
-  }
-
   // Click on map to get info
   function onMapClick(callback) {
     if (!map) return;
@@ -280,8 +245,6 @@ const GeoMap = (() => {
     isISSActive,
     isQuakesActive,
     onMapClick,
-    switchLayer,
-    showWebcams,
-    clearWebcams
+    switchLayer
   };
 })();

@@ -61,9 +61,6 @@
         <button class="map-ctrl-btn" id="btn-quakes" aria-label="Erdbeben anzeigen">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12l3-3 3 6 3-9 3 12 3-6 3 3"/></svg>
         </button>
-        <button class="map-ctrl-btn" id="btn-webcams" aria-label="Webcams anzeigen">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-        </button>
         <button class="map-ctrl-btn" id="btn-layers" aria-label="Kartenstil wechseln">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
         </button>
@@ -306,18 +303,6 @@
           </div>
         </article>
 
-        <!-- Webcams Card -->
-        <article class="card card--wide" id="card-webcams">
-          <div class="card__header">
-            <h2 class="card__title">Live-Webcams</h2>
-            <span class="card__status" data-status="loading">Laden...</span>
-          </div>
-          <div class="card__body">
-            <div class="data-row"><span class="data-label">Webcams in der Nähe</span><span class="data-value" id="val-webcam-count">–</span></div>
-            <ul class="quake-list" id="webcam-list" aria-label="Webcams"></ul>
-          </div>
-        </article>
-
         <!-- Tides Card -->
         <article class="card" id="card-tides">
           <div class="card__header">
@@ -366,27 +351,11 @@
     </section>
   </main>
 
-  <!-- Webcam Modal -->
-  <div class="webcam-modal" id="webcam-modal" hidden>
-    <div class="webcam-modal__backdrop" id="webcam-modal-close"></div>
-    <div class="webcam-modal__content">
-      <div class="webcam-modal__header">
-        <h3 class="webcam-modal__title" id="webcam-modal-title">Webcam</h3>
-        <button class="webcam-modal__close" id="webcam-close-btn" aria-label="Schließen">&times;</button>
-      </div>
-      <div class="webcam-modal__body" id="webcam-modal-body">
-        <div class="skeleton" style="height:300px"></div>
-      </div>
-      <div class="webcam-modal__footer" id="webcam-modal-footer"></div>
-    </div>
-  </div>
-
   <!-- Toast notifications -->
   <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
   <!-- Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js" defer></script>
   <script src="js/api.js" defer></script>
   <script src="js/map.js" defer></script>
   <script src="js/app.js" defer></script>

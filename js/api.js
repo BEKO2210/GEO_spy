@@ -660,61 +660,6 @@ const GeoAPI = (() => {
     }
   }
 
-  // --- Webcams (Live-Environment-Streams – 5.242 cameras, 80 countries, free) ---
-
-  let webcamCache = null;
-
-  async function loadWebcamDatabase() {
-    if (webcamCache) return webcamCache;
-    const url = 'https://raw.githubusercontent.com/willytop8/Live-Environment-Streams/main/streams.geojson';
-    const data = await fetchJSON(url, 'Webcam DB', { ttl: 3_600_000, timeout: 15000 });
-    webcamCache = (data.features || []).map(f => ({
-      id: f.properties?.name || '',
-      title: f.properties?.name || 'Webcam',
-      lat: f.geometry?.coordinates?.[1],
-      lon: f.geometry?.coordinates?.[0],
-      url: f.properties?.url || '',
-      country: f.properties?.country_code || f.properties?.display_name || '',
-      environment: f.properties?.environment || '',
-      sceneType: f.properties?.scene_type || '',
-      quality: f.properties?.quality_tier || '',
-      source: f.properties?.source_family || '',
-      streamType: getStreamType(f.properties?.url || '')
-    })).filter(c => c.lat && c.lon);
-    return webcamCache;
-  }
-
-  function getStreamType(url) {
-    if (url.includes('.m3u8')) return 'hls';
-    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
-    if (url.includes('skylinewebcams.com')) return 'skyline';
-    if (url.includes('.mjpg') || url.includes('.mjpeg')) return 'mjpeg';
-    return 'page';
-  }
-
-  async function getWebcams(lat, lon, radius = 250) {
-    try {
-      const all = await loadWebcamDatabase();
-      // Filter by distance and sort
-      return all
-        .map(c => ({ ...c, distance: haversine(lat, lon, c.lat, c.lon) }))
-        .filter(c => c.distance <= radius * 1000)
-        .sort((a, b) => a.distance - b.distance)
-        .slice(0, 30);
-    } catch {
-      return [];
-    }
-  }
-
-  async function getWebcamCount() {
-    try {
-      const all = await loadWebcamDatabase();
-      return all.length;
-    } catch {
-      return 0;
-    }
-  }
-
   // --- Public interface ---
   return {
     getIPLocation,
@@ -740,8 +685,6 @@ const GeoAPI = (() => {
     getWeatherHistory,
     getGDACSAlerts,
     getEuropeanQuakes,
-    getWebcams,
-    getWebcamCount,
     getStatus: () => ({ ...apiStatus })
   };
 })();
