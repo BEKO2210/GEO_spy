@@ -56,10 +56,13 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
         </button>
         <button class="map-ctrl-btn" id="btn-iss" aria-label="ISS verfolgen">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><ellipse cx="12" cy="12" rx="4" ry="10"/></svg>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.5px">iss</span>
         </button>
         <button class="map-ctrl-btn" id="btn-quakes" aria-label="Erdbeben anzeigen">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12l3-3 3 6 3-9 3 12 3-6 3 3"/></svg>
+        </button>
+        <button class="map-ctrl-btn" id="btn-webcams" aria-label="Webcams anzeigen">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
         </button>
         <button class="map-ctrl-btn" id="btn-layers" aria-label="Kartenstil wechseln">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
@@ -362,20 +365,6 @@
       </div>
     </section>
   </main>
-
-  <!-- ISS Bottom Bar (always visible) -->
-  <div class="iss-bar" id="iss-bar">
-    <button class="iss-bar__toggle" id="iss-bar-toggle" aria-label="ISS Live-Tracking starten">
-      <span class="iss-bar__icon">🛰️</span>
-      <span class="iss-bar__label" id="iss-bar-label">ISS Tracking starten</span>
-    </button>
-    <div class="iss-bar__data" id="iss-bar-data" hidden>
-      <span class="iss-bar__stat"><span class="iss-bar__key">Lat</span> <span id="val-iss-bar-lat">–</span></span>
-      <span class="iss-bar__stat"><span class="iss-bar__key">Lon</span> <span id="val-iss-bar-lon">–</span></span>
-      <span class="iss-bar__stat"><span class="iss-bar__key">Alt</span> <span id="val-iss-bar-alt">–</span></span>
-      <span class="iss-bar__stat iss-bar__live">LIVE</span>
-    </div>
-  </div>
 
   <!-- Webcam Modal -->
   <div class="webcam-modal" id="webcam-modal" hidden>

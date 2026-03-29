@@ -582,10 +582,16 @@
       }
     });
 
-    // ISS button (syncs with ISS bar)
-    $('#btn-iss')?.addEventListener('click', () => {
-      // Trigger the ISS bar toggle instead (single source of truth)
-      $('#iss-bar-toggle')?.click();
+    // ISS button
+    $('#btn-iss')?.addEventListener('click', async () => {
+      const btn = $('#btn-iss');
+      const active = await GeoMap.toggleISS((pos) => {
+        setValue('val-iss-lat', pos.lat?.toFixed(4));
+        setValue('val-iss-lon', pos.lon?.toFixed(4));
+        setValue('val-iss-time', new Date().toLocaleTimeString('de-DE'));
+      });
+      btn.classList.toggle('active', active);
+      toast(active ? 'iss tracking an' : 'iss tracking aus', 'success');
     });
 
     // Earthquakes button
@@ -615,6 +621,22 @@
     $('#btn-layers')?.addEventListener('click', () => {
       const name = GeoMap.switchLayer();
       toast(`Karte: ${name}`, 'success');
+    });
+
+    // Webcams toggle button
+    let webcamsVisible = false;
+    $('#btn-webcams')?.addEventListener('click', async () => {
+      const btn = $('#btn-webcams');
+      webcamsVisible = !webcamsVisible;
+      btn.classList.toggle('active', webcamsVisible);
+
+      if (webcamsVisible && currentLocation) {
+        await loadWebcams(currentLocation.lat, currentLocation.lon);
+        toast('Webcams an', 'success');
+      } else {
+        GeoMap.clearWebcams();
+        toast('Webcams aus', 'success');
+      }
     });
   }
 
@@ -794,38 +816,6 @@
     });
   }
 
-  // --- ISS Bottom Bar ---
-  function setupISSBar() {
-    const toggle = $('#iss-bar-toggle');
-    const dataEl = $('#iss-bar-data');
-    const label = $('#iss-bar-label');
-
-    toggle?.addEventListener('click', async () => {
-      const active = await GeoMap.toggleISS((pos) => {
-        // Update bar data
-        setValue('val-iss-bar-lat', pos.lat?.toFixed(3));
-        setValue('val-iss-bar-lon', pos.lon?.toFixed(3));
-        setValue('val-iss-bar-alt', pos.altitude ? `${pos.altitude.toFixed(0)} km` : '–');
-
-        // Also update live panel data
-        setValue('val-iss-lat', pos.lat?.toFixed(4));
-        setValue('val-iss-lon', pos.lon?.toFixed(4));
-        setValue('val-iss-time', new Date().toLocaleTimeString('de-DE'));
-      });
-
-      toggle.classList.toggle('active', active);
-      label.textContent = active ? 'ISS LIVE' : 'ISS Tracking starten';
-      dataEl.hidden = !active;
-
-      if (active) {
-        // Also activate map button
-        $('#btn-iss')?.classList.add('active');
-      } else {
-        $('#btn-iss')?.classList.remove('active');
-      }
-    });
-  }
-
   // --- Utility ---
   function getTimeAgo(timestamp) {
     const diff = Date.now() - timestamp;
@@ -856,7 +846,6 @@
     setupMapControls();
     setupCitySearch();
     setupWebcamModal();
-    setupISSBar();
 
     // Load IP location first (needed for other API calls)
     const ipData = await loadIPLocation();
@@ -881,8 +870,7 @@
         loadNearbyPOIs(lat, lon),
         loadWeatherAlerts(lat, lon),
         loadTideData(lat, lon),
-        loadWeatherHistory(lat, lon),
-        loadWebcams(lat, lon)
+        loadWeatherHistory(lat, lon)
       ]);
     } else {
       // Still try to load non-location-dependent data
