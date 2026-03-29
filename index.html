@@ -6,6 +6,8 @@
   <meta name="description" content="Open Source Live GEO Tracking Platform – Echtzeit-Geodaten, Erdbeben, ISS-Tracking, Wetter und mehr.">
   <meta name="theme-color" content="#0a0e1a">
   <meta name="color-scheme" content="dark">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://beko2210.github.io/GEO_spy/">
   <title>GEO Spy – Live GEO Tracking</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
@@ -53,6 +55,9 @@
         </button>
         <button class="map-ctrl-btn" id="btn-quakes" aria-label="Erdbeben anzeigen">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12l3-3 3 6 3-9 3 12 3-6 3 3"/></svg>
+        </button>
+        <button class="map-ctrl-btn" id="btn-layers" aria-label="Kartenstil wechseln">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
         </button>
       </div>
       <!-- Floating info card on map -->
@@ -174,6 +179,22 @@
             <div class="data-row"><span class="data-label">ASN</span><span class="data-value" id="val-asn">–</span></div>
             <div class="data-row"><span class="data-label">Organisation</span><span class="data-value" id="val-org">–</span></div>
             <div class="data-row"><span class="data-label">Typ</span><span class="data-value" id="val-connection-type">–</span></div>
+          </div>
+        </article>
+
+        <!-- Air Quality Card -->
+        <article class="card" id="card-air">
+          <div class="card__header">
+            <h2 class="card__title">Luftqualität</h2>
+            <span class="card__status" data-status="loading">Laden...</span>
+          </div>
+          <div class="card__body">
+            <div class="data-row"><span class="data-label">AQI (US)</span><span class="data-value" id="val-aqi">–</span></div>
+            <div class="data-row"><span class="data-label">Bewertung</span><span class="data-value" id="val-aqi-level">–</span></div>
+            <div class="data-row"><span class="data-label">PM2.5</span><span class="data-value" id="val-pm25">–</span></div>
+            <div class="data-row"><span class="data-label">PM10</span><span class="data-value" id="val-pm10">–</span></div>
+            <div class="data-row"><span class="data-label">Ozon</span><span class="data-value" id="val-o3">–</span></div>
+            <div class="data-row"><span class="data-label">NO₂</span><span class="data-value" id="val-no2">–</span></div>
           </div>
         </article>
       </div>

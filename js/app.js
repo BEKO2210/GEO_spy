@@ -193,6 +193,22 @@
     }
   }
 
+  // --- Load Air Quality ---
+  async function loadAirQuality(lat, lon) {
+    try {
+      const data = await GeoAPI.getAirQuality(lat, lon);
+      setValue('val-aqi', data.aqi != null ? data.aqi : '–');
+      setValue('val-aqi-level', data.level);
+      setValue('val-pm25', data.pm25 != null ? `${data.pm25} µg/m³` : '–');
+      setValue('val-pm10', data.pm10 != null ? `${data.pm10} µg/m³` : '–');
+      setValue('val-o3', data.o3 != null ? `${data.o3} µg/m³` : '–');
+      setValue('val-no2', data.no2 != null ? `${data.no2} µg/m³` : '–');
+      setCardStatus('card-air', 'ok', 'OK');
+    } catch {
+      setCardStatus('card-air', 'error', 'Fehler');
+    }
+  }
+
   // --- Load Earthquakes ---
   async function loadEarthquakes() {
     try {
@@ -368,6 +384,12 @@
       btn.classList.toggle('active', shouldShow);
       toast(shouldShow ? 'Erdbeben-Overlay aktiviert' : 'Erdbeben-Overlay deaktiviert', 'success');
     });
+
+    // Layers button
+    $('#btn-layers')?.addEventListener('click', () => {
+      const name = GeoMap.switchLayer();
+      toast(`Karte: ${name}`, 'success');
+    });
   }
 
   // --- Utility ---
@@ -413,7 +435,8 @@
         loadSunTimes(lat, lon),
         loadTimezone(lat, lon, ipData.timezone),
         loadCountryInfo(ipData.countryCode),
-        loadEarthquakes()
+        loadEarthquakes(),
+        loadAirQuality(lat, lon)
       ]);
     } else {
       // Still try to load earthquakes
@@ -437,7 +460,8 @@
             loadGeocode(lat, lon),
             loadElevation(lat, lon),
             loadWeather(lat, lon),
-            loadSunTimes(lat, lon)
+            loadSunTimes(lat, lon),
+            loadAirQuality(lat, lon)
           ]);
         },
         () => { /* User denied geolocation, IP location is fine */ },

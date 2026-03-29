@@ -303,6 +303,32 @@ const GeoAPI = (() => {
     };
   }
 
+  // --- Air Quality (Open-Meteo – free, no key) ---
+
+  async function getAirQuality(lat, lon) {
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,ozone`;
+    const data = await fetchJSON(url, 'Open-Meteo AQ');
+    const c = data.current;
+    return {
+      aqi: c.us_aqi,
+      pm25: c.pm2_5,
+      pm10: c.pm10,
+      co: c.carbon_monoxide,
+      no2: c.nitrogen_dioxide,
+      o3: c.ozone,
+      level: aqiLevel(c.us_aqi)
+    };
+  }
+
+  function aqiLevel(aqi) {
+    if (aqi <= 50) return 'Gut';
+    if (aqi <= 100) return 'Mäßig';
+    if (aqi <= 150) return 'Ungesund für Empfindliche';
+    if (aqi <= 200) return 'Ungesund';
+    if (aqi <= 300) return 'Sehr ungesund';
+    return 'Gefährlich';
+  }
+
   // --- Public interface ---
   return {
     getIPLocation,
@@ -315,6 +341,7 @@ const GeoAPI = (() => {
     getCountryInfo,
     getISSPosition,
     getEarthquakes,
+    getAirQuality,
     getStatus: () => ({ ...apiStatus })
   };
 })();

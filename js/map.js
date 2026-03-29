@@ -14,6 +14,35 @@ const GeoMap = (() => {
   let issInterval = null;
   let issActive = false;
   let quakesActive = false;
+  let currentLayerIndex = 0;
+  let currentTileLayer = null;
+
+  const tileLayers = [
+    {
+      name: 'Dark',
+      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd'
+    },
+    {
+      name: 'Straße',
+      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      subdomains: 'abc'
+    },
+    {
+      name: 'Satellit',
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attribution: '&copy; <a href="https://www.esri.com/">Esri</a> &copy; Earthstar Geographics',
+      subdomains: ''
+    },
+    {
+      name: 'Topographie',
+      url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+      subdomains: 'abc'
+    }
+  ];
 
   // Custom icons
   function createIcon(emoji, size = 32) {
@@ -33,10 +62,11 @@ const GeoMap = (() => {
       attributionControl: true
     });
 
-    // Dark tile layer
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-      subdomains: 'abcd',
+    // Default tile layer (Dark)
+    const layer = tileLayers[0];
+    currentTileLayer = L.tileLayer(layer.url, {
+      attribution: layer.attribution,
+      subdomains: layer.subdomains || 'abc',
       maxZoom: 19
     }).addTo(map);
 
@@ -170,6 +200,21 @@ const GeoMap = (() => {
     return `vor ${Math.floor(hours / 24)} Tagen`;
   }
 
+  // --- Layer Switching ---
+  function switchLayer() {
+    currentLayerIndex = (currentLayerIndex + 1) % tileLayers.length;
+    const layer = tileLayers[currentLayerIndex];
+
+    if (currentTileLayer) map.removeLayer(currentTileLayer);
+    currentTileLayer = L.tileLayer(layer.url, {
+      attribution: layer.attribution,
+      subdomains: layer.subdomains || 'abc',
+      maxZoom: 19
+    }).addTo(map);
+
+    return layer.name;
+  }
+
   // Click on map to get info
   function onMapClick(callback) {
     if (!map) return;
@@ -189,6 +234,7 @@ const GeoMap = (() => {
     toggleEarthquakes,
     isISSActive,
     isQuakesActive,
-    onMapClick
+    onMapClick,
+    switchLayer
   };
 })();
